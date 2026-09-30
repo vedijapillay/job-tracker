@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles (optional) */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+button {
+  @apply transition-colors duration-200;
+}
+
+button:hover {
+  @apply opacity-90;
+}
+
+table {
+  @apply w-full border-collapse;
+}
+
+th, td {
+  @apply border border-gray-300 px-4 py-2 text-left;
+}
+
+th {
+  @apply bg-gray-100 font-semibold;
+}
+
+tr:hover {
+  @apply bg-gray-50;
+}
+
+input, select {
+  @apply border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}

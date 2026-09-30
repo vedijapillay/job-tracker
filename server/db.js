@@ -1,0 +1,222 @@
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+// Database path
+const DB_PATH = path.join(__dirname, '../jobs.db');
+
+// Initialize database
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database at', DB_PATH);
+    initializeSchema();
+  }
+});
+
+// Enable foreign keys
+db.run('PRAGMA foreign_keys = ON');
+
+// Initialize schema
+function initializeSchema() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company TEXT NOT NULL,
+      jobTitle TEXT NOT NULL,
+      appliedDate DATE NOT NULL,
+      status TEXT DEFAULT 'Applied',
+      source TEXT,
+      lastEmailDate DATE,
+      lastEmailSubject TEXT,
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating table:', err.message);
+    } else {
+      console.log('Jobs table initialized');
+    }
+  });
+}
+
+// Insert a new job
+function insertJob(job) {
+  return new Promise((resolve, reject) => {
+    const { company, jobTitle, appliedDate, status = 'Applied', source, lastEmailDate, lastEmailSubject, notes } = job;
+    
+    const query = `
+      INSERT INTO jobs (company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.run(query, [company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ id: this.lastID, ...job });
+      }
+    });
+  });
+}
+
+// Get all jobs
+function getAllJobs() {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM jobs ORDER BY appliedDate DESC', (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows || []);
+      }
+    });
+  });
+}
+
+// Get jobs with filters
+function getJobsFiltered(filters = {}) {
+  return new Promise((resolve, reject) => {
+    let query = 'SELECT * FROM jobs WHERE 1=1';
+    const params = [];
+
+    // Filter by status
+    if (filters.status) {
+      query += ' AND status = ?';
+      params.push(filters.status);
+    }
+
+    // Filter by source
+    if (filters.source) {
+      query += ' AND source = ?';
+      params.push(filters.source);
+    }
+
+    // Filter by date range
+    if (filters.startDate) {
+      query += ' AND appliedDate >= ?';
+      params.push(filters.startDate);
+    }
+    if (filters.endDate) {
+      query += ' AND appliedDate <= ?';
+      params.push(filters.endDate);
+    }
+
+    query += ' ORDER BY appliedDate DESC';
+
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows || []);
+      }
+    });
+  });
+}
+
+// Get job by ID
+function getJobById(id) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM jobs WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+// Update job
+function updateJob(id, updates) {
+  return new Promise((resolve, reject) => {
+    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes'];
+    const updateFields = [];
+    const values = [];
+
+    // Build dynamic update query
+    for (const field of allowedFields) {
+      if (field in updates) {
+        updateFields.push(`${field} = ?`);
+        values.push(updates[field]);
+      }
+    }
+
+    if (updateFields.length === 0) {
+      reject(new Error('No valid fields to update'));
+      return;
+    }
+
+    updateFields.push('updatedAt = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    const query = `UPDATE jobs SET ${updateFields.join(', ')} WHERE id = ?`;
+
+    db.run(query, values, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ id, ...updates });
+      }
+    });
+  });
+}
+
+// Delete job
+function deleteJob(id) {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM jobs WHERE id = ?', [id], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ deleted: this.changes > 0 });
+      }
+    });
+  });
+}
+
+// Get job statistics
+function getStats() {
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'Applied' THEN 1 ELSE 0 END) as applied,
+        SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN status = 'Interview Scheduled' THEN 1 ELSE 0 END) as interviews,
+        SUM(CASE WHEN status IN ('Recruiter Screen', 'Technical Round', 'HM Round', 'Offer') THEN 1 ELSE 0 END) as moving_forward
+      FROM jobs
+    `, (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows[0] || {});
+      }
+    });
+  });
+}
+
+// Close database
+function closeDb() {
+  db.close((err) => {
+    if (err) {
+      console.error('Error closing database:', err.message);
+    } else {
+      console.log('Database connection closed');
+    }
+  });
+}
+
+// Export functions
+module.exports = {
+  db,
+  insertJob,
+  getAllJobs,
+  getJobsFiltered,
+  getJobById,
+  updateJob,
+  deleteJob,
+  getStats,
+  closeDb
+};
