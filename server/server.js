@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const jobsRouter = require('./routes/jobs');
-
+const gmailRouter = require('./routes/gmail');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -14,7 +14,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/jobs', jobsRouter);
-
+app.use('/api/gmail', gmailRouter);
 // Test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ 

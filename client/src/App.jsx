@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import GmailScanner from './components/GmailScanner'
 
 export default function App() {
   const [jobs, setJobs] = useState([])
@@ -162,6 +163,7 @@ export default function App() {
           >
             {showForm ? 'Cancel' : '+ Add Job'}
           </button>
+          <GmailScanner onJobsDetected={fetchJobs} />
           <button
             onClick={handleExportCSV}
             className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700"
