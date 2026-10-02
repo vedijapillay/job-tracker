@@ -7,8 +7,7 @@
       "GOOGLE_REDIRECT_URI": "@google_redirect_uri"
     },
     "rewrites": [
-      { "source": "/api/(.*)", "destination": "/server/server.js" },
+      { "source": "/api/(.*)", "destination": "/api" },
       { "source": "/(.*)", "destination": "/client/dist/$1" }
     ]
   }
-  
