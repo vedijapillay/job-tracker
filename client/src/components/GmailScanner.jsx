@@ -89,19 +89,21 @@ export default function GmailScanner({ onJobsDetected }) {
         onJobsDetected(job)
       }
 
-      // Remove from detected list
-      setDetectedJobs(detectedJobs.filter(j => j.lastEmailSubject !== job.lastEmailSubject))
-
-      alert(`Added: ${job.company}`)
+      // Remove from detected list (functional update avoids stale state)
+      setDetectedJobs(prev => {
+        const remaining = prev.filter(j => j.id !== job.id)
+        if (remaining.length === 0) setShowModal(false)
+        return remaining
+      })
     } catch (err) {
       setError(err.message)
     }
   }
 
   const handleJobTitleChange = (index, newTitle) => {
-    const updated = [...detectedJobs]
-    updated[index].jobTitle = newTitle
-    setDetectedJobs(updated)
+    setDetectedJobs(prev =>
+      prev.map((job, i) => (i === index ? { ...job, jobTitle: newTitle } : job))
+    )
   }
 
   return (
@@ -152,7 +154,7 @@ export default function GmailScanner({ onJobsDetected }) {
             <div className="p-6 space-y-4">
               {detectedJobs.map((job, index) => (
                 <div
-                  key={index}
+                  key={job.id || index}
                   className="border border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition"
                 >
                   {/* Company & Status */}
@@ -175,7 +177,7 @@ export default function GmailScanner({ onJobsDetected }) {
 
                   {/* Job Title Input */}
                   <div className="mb-3">
-                    <label className="block text-sm font-semibold mb-1">Job Title *</label>
+                    <label className="block text-sm font-semibold mb-1">Job Title (optional)</label>
                     <input
                       type="text"
                       placeholder="e.g., Senior Engineer, Product Manager"
@@ -201,8 +203,7 @@ export default function GmailScanner({ onJobsDetected }) {
                   {/* Add Button */}
                   <button
                     onClick={() => addJobToTracker(job)}
-                    disabled={!job.jobTitle.trim()}
-                    className="w-full bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                    className="w-full bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
                   >
                     ✓ Add to Tracker
                   </button>

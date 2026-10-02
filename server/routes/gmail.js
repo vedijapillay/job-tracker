@@ -11,56 +11,7 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// Helper functions
-function extractEmail(from) {
-  const match = from.match(/<(.+?)>/);
-  return match ? match[1] : from;
-}
-
-function extractCompany(email) {
-  const domain = email.split('@')[1];
-  if (!domain) return 'Unknown';
-  return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
-}
-
-function isNoReply(email) {
-  return email.toLowerCase().includes('no-reply') || email.toLowerCase().includes('noreply');
-}
-
-function detectStatus(email, subject, body) {
-  const subjectLower = subject.toLowerCase();
-  const bodyLower = body.toLowerCase();
-  const senderEmail = extractEmail(email).toLowerCase();
-  const isNoReplyEmail = isNoReply(senderEmail);
-
-  if (isNoReplyEmail) {
-    if (
-      subjectLower.includes('regret') ||
-      subjectLower.includes('not selected') ||
-      subjectLower.includes('not moving forward') ||
-      bodyLower.includes('regret to inform') ||
-      bodyLower.includes('not selected')
-    ) {
-      return 'Rejected';
-    }
-  }
-
-  if (!isNoReplyEmail) {
-    if (
-      subjectLower.includes('interview') ||
-      subjectLower.includes('invitation') ||
-      subjectLower.includes('next round') ||
-      subjectLower.includes('phone screen') ||
-      subjectLower.includes('technical round') ||
-      subjectLower.includes('hiring manager') ||
-      bodyLower.includes('schedule') && (bodyLower.includes('interview') || bodyLower.includes('call'))
-    ) {
-      return 'Interview Scheduled';
-    }
-  }
-
-  return 'Review';
-}
+const { parseFrom, extractCompany, extractJobTitle, detectStatus } = require('../lib/classify');
 
 // Gmail returns base64url-encoded bodies, possibly nested in multipart parts
 function extractBody(payload) {
@@ -133,7 +84,7 @@ router.post('/scan', async (req, res) => {
     const messagesRes = await authGmail.users.messages.list({
       userId: 'me',
       maxResults: 100,
-      q: 'in:inbox newer_than:180d'
+      q: 'in:inbox newer_than:180d (application OR applying OR applied OR position OR candidate OR interview OR recruiter)'
     });
 
     const messageIds = messagesRes.data.messages || [];
@@ -170,7 +121,8 @@ router.post('/scan', async (req, res) => {
         processedEmails.add(emailKey);
 
         const status = detectStatus(from, subject, body);
-        const company = extractCompany(extractEmail(from));
+        const company = extractCompany(from, subject);
+        const jobTitle = extractJobTitle(subject, body);
         const parsedDate = new Date(date);
         const emailDate = isNaN(parsedDate)
           ? new Date().toISOString().split('T')[0]
@@ -178,13 +130,14 @@ router.post('/scan', async (req, res) => {
 
         if (status !== 'Review') {
           detectedJobs.push({
+            id: message.id,
             company,
-            jobTitle: '',
+            jobTitle,
             status,
             source: 'Gmail',
             lastEmailDate: emailDate,
             lastEmailSubject: subject,
-            senderEmail: extractEmail(from)
+            senderEmail: parseFrom(from).email
           });
         }
       } catch (error) {
