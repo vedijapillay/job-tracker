@@ -62,6 +62,22 @@ function detectStatus(email, subject, body) {
   return 'Review';
 }
 
+// Gmail returns base64url-encoded bodies, possibly nested in multipart parts
+function extractBody(payload) {
+  if (!payload) return '';
+  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) {
+    return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
+  }
+  for (const part of payload.parts || []) {
+    const text = extractBody(part);
+    if (text) return text;
+  }
+  if (!payload.parts && payload.body && payload.body.data) {
+    return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
+  }
+  return '';
+}
+
 // ROUTES START HERE
 
 // GET /api/gmail/auth - Redirect to Google OAuth consent screen
@@ -88,12 +104,9 @@ router.get('/auth/callback', async (req, res) => {
 
     const { tokens } = await oauth2Client.getToken(code);
 
-    res.json({
-      message: 'Authentication successful',
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token || null,
-      expiresIn: tokens.expiry_date
-    });
+    // Redirect back to the app; the fragment is never sent to a server
+    const frontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontend}/#gmail_token=${encodeURIComponent(tokens.access_token)}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
     res.status(500).json({
@@ -120,7 +133,7 @@ router.post('/scan', async (req, res) => {
     const messagesRes = await authGmail.users.messages.list({
       userId: 'me',
       maxResults: 100,
-      q: 'is:sent'
+      q: 'in:inbox newer_than:180d'
     });
 
     const messageIds = messagesRes.data.messages || [];
@@ -150,15 +163,7 @@ router.post('/scan', async (req, res) => {
         const subject = headers.find(h => h.name === 'Subject')?.value || '';
         const date = headers.find(h => h.name === 'Date')?.value || '';
 
-        let body = '';
-        if (messageData.payload.parts) {
-          const textPart = messageData.payload.parts.find(p => p.mimeType === 'text/plain');
-          if (textPart && textPart.body.data) {
-            body = Buffer.from(textPart.body.data, 'base64').toString('utf-8');
-          }
-        } else if (messageData.payload.body.data) {
-          body = Buffer.from(messageData.payload.body.data, 'base64').toString('utf-8');
-        }
+        const body = extractBody(messageData.payload);
 
         const emailKey = `${from}|${subject}`;
         if (processedEmails.has(emailKey)) continue;
@@ -166,7 +171,10 @@ router.post('/scan', async (req, res) => {
 
         const status = detectStatus(from, subject, body);
         const company = extractCompany(extractEmail(from));
-        const emailDate = new Date(date).toISOString().split('T')[0];
+        const parsedDate = new Date(date);
+        const emailDate = isNaN(parsedDate)
+          ? new Date().toISOString().split('T')[0]
+          : parsedDate.toISOString().split('T')[0];
 
         if (status !== 'Review') {
           detectedJobs.push({

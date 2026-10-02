@@ -5,35 +5,22 @@ export default function GmailScanner({ onJobsDetected }) {
   const [error, setError] = useState(null)
   const [detectedJobs, setDetectedJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [authWindow, setAuthWindow] = useState(null)
 
-  // Handle OAuth redirect
+  // Returning from Google: the callback redirects here with the token in the URL fragment
   useEffect(() => {
-    const handleMessage = async (event) => {
-      // Listen for message from OAuth callback window
-      if (event.origin !== window.location.origin) return
-
-      const { accessToken } = event.data
-
-      if (accessToken) {
-        // Close auth window
-        if (authWindow) authWindow.close()
-
-        // Scan emails with the access token
-        await scanGmailEmails(accessToken)
-      }
+    const params = new URLSearchParams(window.location.hash.slice(1))
+    const accessToken = params.get('gmail_token')
+    if (accessToken) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      scanGmailEmails(accessToken)
     }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [authWindow])
+  }, [])
 
   const startOAuthFlow = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      // Get OAuth URL from backend
       const res = await fetch('/api/gmail/auth')
       const data = await res.json()
 
@@ -41,24 +28,7 @@ export default function GmailScanner({ onJobsDetected }) {
         throw new Error('Failed to get auth URL')
       }
 
-      // Open auth window
-      const width = 500
-      const height = 600
-      const left = window.screenX + (window.outerWidth - width) / 2
-      const top = window.screenY + (window.outerHeight - height) / 2
-
-      const oauthWindow = window.open(
-        data.authUrl,
-        'Gmail OAuth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      )
-
-      setAuthWindow(oauthWindow)
-
-      // Check if window was blocked
-      if (!oauthWindow) {
-        throw new Error('OAuth window was blocked. Please allow pop-ups.')
-      }
+      window.location.href = data.authUrl
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -142,7 +112,7 @@ export default function GmailScanner({ onJobsDetected }) {
         disabled={loading}
         className="bg-purple-600 text-white px-6 py-2 rounded font-semibold hover:bg-purple-700 disabled:bg-gray-400"
       >
-        {loading ? '⏳ Authenticating...' : '🔍 Scan Gmail'}
+        {loading ? '⏳ Working...' : '🔍 Scan Gmail'}
       </button>
 
       {/* Error Message */}
