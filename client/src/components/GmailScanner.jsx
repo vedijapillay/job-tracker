@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 
+const STATUSES = ['Applied', 'Rejected', 'Interview Scheduled', 'Recruiter Screen', 'Technical Round', 'HM Round', 'Offer', 'Declined by You', 'Ghosted']
+
 export default function GmailScanner({ onJobsDetected }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -100,9 +102,9 @@ export default function GmailScanner({ onJobsDetected }) {
     }
   }
 
-  const handleJobTitleChange = (index, newTitle) => {
+  const updateDetected = (index, changes) => {
     setDetectedJobs(prev =>
-      prev.map((job, i) => (i === index ? { ...job, jobTitle: newTitle } : job))
+      prev.map((job, i) => (i === index ? { ...job, ...changes } : job))
     )
   }
 
@@ -157,21 +159,28 @@ export default function GmailScanner({ onJobsDetected }) {
                   key={job.id || index}
                   className="border border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition"
                 >
-                  {/* Company & Status */}
-                  <div className="flex justify-between items-start mb-3">
+                  {/* Company & Status (editable) */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">{job.company}</h3>
-                      <span
-                        className={`inline-block mt-1 px-3 py-1 rounded text-sm font-semibold ${
-                          job.status === 'Rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : job.status === 'Interview Scheduled'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
+                      <label className="block text-sm font-semibold mb-1">Company</label>
+                      <input
+                        type="text"
+                        value={job.company}
+                        onChange={(e) => updateDetected(index, { company: e.target.value })}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1">Status</label>
+                      <select
+                        value={job.status}
+                        onChange={(e) => updateDetected(index, { status: e.target.value })}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       >
-                        {job.status}
-                      </span>
+                        {STATUSES.map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -182,7 +191,7 @@ export default function GmailScanner({ onJobsDetected }) {
                       type="text"
                       placeholder="e.g., Senior Engineer, Product Manager"
                       value={job.jobTitle}
-                      onChange={(e) => handleJobTitleChange(index, e.target.value)}
+                      onChange={(e) => updateDetected(index, { jobTitle: e.target.value })}
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     />
                   </div>

@@ -6,12 +6,19 @@ const ATS_DOMAINS = [
   'myworkday.com', 'workday.com', 'greenhouse.io', 'greenhouse-mail.io', 'lever.co',
   'ashbyhq.com', 'icims.com', 'smartrecruiters.com', 'workablemail.com', 'workable.com',
   'jobvite.com', 'taleo.net', 'successfactors.com', 'successfactors.eu', 'brassring.com',
-  'bamboohr.com', 'recruitee.com', 'breezy.hr', 'rippling.com'
+  'bamboohr.com', 'recruitee.com', 'breezy.hr', 'rippling.com', 'dayforce.com', 'dayforcehcm.com'
 ];
 
 // Senders that are never job-application correspondence
 const IGNORED_LOCAL_PARTS = ['invitations', 'calendar-notification', 'calendar'];
-const IGNORED_DOMAINS = ['calendar.google.com', 'zoom.us', 'eventbrite.com', 'meetup.com'];
+const IGNORED_DOMAINS = [
+  'calendar.google.com', 'zoom.us', 'eventbrite.com', 'meetup.com',
+  'glassdoor.com',        // community digests and job alerts
+  'wellfound.com'         // job-alert marketing
+];
+
+// Job-board digests and alerts, regardless of sender
+const DIGEST_SUBJECT = /(new jobs?|more jobs|jobs? (alert|for you|like)|job recommendations?|recommended jobs?|jobs? you may like|similar jobs)\b/i;
 
 const JOB_CONTEXT = /\b(application|applied|applying|position|candidate|candidacy|recruiter|recruiting|hiring|job opening|role)\b/;
 
@@ -38,12 +45,13 @@ const INTERVIEW_PHRASES = [
   'recruiter screen',
   'next round',
   'technical round',
-  'hiring manager',
-  'next steps'
+  'hiring manager'
 ];
 
 const APPLIED_PHRASES = [
   'thank you for applying',
+  'thank you for your application',
+  'thanks for your application',
   'thanks for applying',
   'received your application',
   'application received',
@@ -72,6 +80,10 @@ function extractCompany(from, subject = '') {
   const { name, local, domain } = parseFrom(from);
   if (!domain) return 'Unknown';
 
+  // "Thanks for applying to Via!" names the company directly
+  const applyingTo = subject.match(/(?:applying|application|applied) (?:to|at|with) (.+?)[\s!.]*$/i);
+  if (applyingTo) return applyingTo[1].trim();
+
   if (isAtsDomain(domain)) {
     // "Workday Nordstrom" -> "Nordstrom"; fall back to the address local part
     const cleaned = name
@@ -80,9 +92,6 @@ function extractCompany(from, subject = '') {
       .trim();
     if (cleaned) return cleaned;
     if (!/^(no-?reply|jobs|careers|recruiting|notifications?)$/.test(local)) return titleCase(local);
-    // "Thank you for applying to Stripe"
-    const fromSubject = subject.match(/(?:applying|application|applied) (?:to|at|with) (.+?)\s*$/i);
-    if (fromSubject) return fromSubject[1].trim();
   }
 
   // Second-level label: mail.nordstrom.com -> Nordstrom
@@ -92,8 +101,11 @@ function extractCompany(from, subject = '') {
 }
 
 function extractJobTitle(subject, body) {
+  // "Thank You For Applying - Senior Product Manager"
+  const dashed = subject.match(/(?:applying|application)[^-]*\s-\s+(.+?)\s*$/i);
+  if (dashed) return dashed[1].trim();
   const fromSubject = subject.match(/\b(?:for|-)\s+(?:the\s+)?(.+?)(?:\s+(?:position|role))?\s*$/i);
-  if (fromSubject && /application|update/i.test(subject) && !/^(applying|to|your)\b/i.test(fromSubject[1])) {
+  if (fromSubject && /application|update|applying/i.test(subject) && !/^(applying|to|your)\b/i.test(fromSubject[1])) {
     return fromSubject[1].trim();
   }
   const fromBody = body.match(/interest in the (.+?) (?:position|role)/i);
@@ -118,7 +130,7 @@ function includesAny(text, phrases) {
 function detectStatus(from, subject, body) {
   const { local, domain } = parseFrom(from);
   if (IGNORED_LOCAL_PARTS.includes(local) || IGNORED_DOMAINS.includes(domain)) return 'Review';
-  if (isCalendarInvite(subject)) return 'Review';
+  if (isCalendarInvite(subject) || DIGEST_SUBJECT.test(subject)) return 'Review';
 
   const subjectLower = subject.toLowerCase();
   const text = `${subjectLower}\n${body.toLowerCase()}`;
@@ -128,8 +140,12 @@ function detectStatus(from, subject, body) {
 
   // Rejections often mention interviews/applications, so check them first
   if (includesAny(text, REJECTION_PHRASES)) return 'Rejected';
-  if (includesAny(text, INTERVIEW_PHRASES)) return 'Interview Scheduled';
+  // "Thanks for applying" in the subject is a confirmation even if the body
+  // talks about possible interviews
+  if (includesAny(subjectLower, APPLIED_PHRASES) && !includesAny(subjectLower, INTERVIEW_PHRASES)) return 'Applied';
+  if (includesAny(subjectLower, INTERVIEW_PHRASES)) return 'Interview Scheduled';
   if (includesAny(text, APPLIED_PHRASES)) return 'Applied';
+  if (includesAny(text, INTERVIEW_PHRASES)) return 'Interview Scheduled';
 
   return 'Review';
 }
