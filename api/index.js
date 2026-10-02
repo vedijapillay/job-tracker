@@ -1,20 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import db from '../server/db.js';
-import jobsRouter from '../server/routes/jobs.js';
-import gmailRouter from '../server/routes/gmail.js';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/jobs', jobsRouter);
-app.use('/api/gmail', gmailRouter);
-
+// Test route
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Server is running!' });
+  res.json({ message: 'API is working!' });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
 export default app;
