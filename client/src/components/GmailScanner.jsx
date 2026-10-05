@@ -68,6 +68,37 @@ export default function GmailScanner({ onJobsDetected }) {
     }
   }
 
+  // Remember the email server-side so future scans skip it
+  const markProcessed = (job, reason) =>
+    fetch('/api/gmail/processed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: job.id,
+        reason,
+        senderEmail: job.senderEmail,
+        subject: job.lastEmailSubject
+      })
+    })
+
+  const removeDetected = (job) => {
+    setDetectedJobs(prev => {
+      const remaining = prev.filter(j => j.id !== job.id)
+      if (remaining.length === 0) setShowModal(false)
+      return remaining
+    })
+  }
+
+  const dismissJob = async (job) => {
+    try {
+      const res = await markProcessed(job, 'dismissed')
+      if (!res.ok) throw new Error('Failed to dismiss email')
+      removeDetected(job)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const addJobToTracker = async (job) => {
     try {
       const res = await fetch('/api/jobs', {
@@ -91,12 +122,9 @@ export default function GmailScanner({ onJobsDetected }) {
         onJobsDetected(job)
       }
 
-      // Remove from detected list (functional update avoids stale state)
-      setDetectedJobs(prev => {
-        const remaining = prev.filter(j => j.id !== job.id)
-        if (remaining.length === 0) setShowModal(false)
-        return remaining
-      })
+      // Best effort: the job is saved either way, this only prevents it reappearing
+      markProcessed(job, 'added').catch(() => {})
+      removeDetected(job)
     } catch (err) {
       setError(err.message)
     }
@@ -209,13 +237,21 @@ export default function GmailScanner({ onJobsDetected }) {
                     </p>
                   </div>
 
-                  {/* Add Button */}
-                  <button
-                    onClick={() => addJobToTracker(job)}
-                    className="w-full bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
-                  >
-                    ✓ Add to Tracker
-                  </button>
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => addJobToTracker(job)}
+                      className="flex-1 bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
+                    >
+                      ✓ Add to Tracker
+                    </button>
+                    <button
+                      onClick={() => dismissJob(job)}
+                      className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100 transition"
+                    >
+                      ✕ Not a job email
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

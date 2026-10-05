@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { google } = require('googleapis');
+const db = require('../db');
 
 const gmail = google.gmail('v1');
 
@@ -98,8 +99,12 @@ router.post('/scan', async (req, res) => {
 
     const detectedJobs = [];
     const processedEmails = new Set();
+    const skipIds = await db.getProcessedEmailIds();
 
     for (const message of messageIds) {
+      // Already dismissed or added: skip before spending an API call on it
+      if (skipIds.has(message.id)) continue;
+
       try {
         const messageRes = await authGmail.users.messages.get({
           userId: 'me',
@@ -161,6 +166,27 @@ router.post('/scan', async (req, res) => {
       error: 'Failed to scan Gmail',
       details: error.message
     });
+  }
+});
+
+// POST /api/gmail/processed - Remember an email so future scans skip it
+// body: { id, reason: 'dismissed' | 'added', senderEmail?, subject? }
+router.post('/processed', async (req, res) => {
+  try {
+    const { id, reason, senderEmail, subject } = req.body || {};
+
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Email id required' });
+    }
+    if (!['dismissed', 'added'].includes(reason)) {
+      return res.status(400).json({ error: "reason must be 'dismissed' or 'added'" });
+    }
+
+    await db.markEmailProcessed({ messageId: id, reason, sender: senderEmail, subject });
+    res.json({ message: 'Email will be skipped in future scans' });
+  } catch (error) {
+    console.error('Error marking email processed:', error);
+    res.status(500).json({ error: 'Failed to save', details: error.message });
   }
 });
 

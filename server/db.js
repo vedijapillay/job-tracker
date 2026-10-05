@@ -40,6 +40,45 @@ function initializeSchema() {
       console.log('Jobs table initialized');
     }
   });
+
+  // Gmail messages the user has dismissed or already added, so scans skip them
+  db.run(`
+    CREATE TABLE IF NOT EXISTS processed_emails (
+      messageId TEXT PRIMARY KEY,
+      reason TEXT NOT NULL,
+      sender TEXT,
+      subject TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating processed_emails table:', err.message);
+    }
+  });
+}
+
+// Record a Gmail message as dismissed or added
+function markEmailProcessed({ messageId, reason, sender, subject }) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT OR REPLACE INTO processed_emails (messageId, reason, sender, subject) VALUES (?, ?, ?, ?)',
+      [messageId, reason, sender, subject],
+      (err) => (err ? reject(err) : resolve({ messageId, reason }))
+    );
+  });
+}
+
+// Set of Gmail message IDs the scan should skip
+function getProcessedEmailIds() {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT messageId FROM processed_emails', (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(new Set(rows.map(row => row.messageId)));
+      }
+    });
+  });
 }
 
 // Insert a new job
@@ -232,6 +271,8 @@ module.exports = {
   updateJob,
   deleteJob,
   deleteJobs,
+  markEmailProcessed,
+  getProcessedEmailIds,
   getStats,
   closeDb
 };
