@@ -12,11 +12,13 @@ const { classifierVersion } = require('../lib/version');
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 const FETCH_CONCURRENCY = 8;
 
+const LOCAL_PORT = process.env.PORT || 3000;
+
 function newOAuthClient() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    process.env.GOOGLE_REDIRECT_URI || `http://localhost:${LOCAL_PORT}/api/gmail/auth/callback`
   );
 }
 
@@ -124,7 +126,7 @@ router.get('/auth/callback', async (req, res) => {
     }
 
     // No credentials in the URL
-    const frontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontend = process.env.FRONTEND_URL || `http://localhost:${LOCAL_PORT}`;
     res.redirect(`${frontend}/#gmail=connected`);
   } catch (error) {
     console.error('OAuth callback error:', error);

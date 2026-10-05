@@ -1,15 +1,28 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
-const cors = require('cors');
 require('dotenv').config();
 
 const db = require('./db');
+const { createSecurity, splitList } = require('./lib/security');
 const jobsRouter = require('./routes/jobs');
 const gmailRouter = require('./routes/gmail');
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Loopback only: the tracker holds personal data, so other machines must not reach it
+const HOST = process.env.HOST || '127.0.0.1';
+
+const CLIENT_DIST = path.join(__dirname, '../client/dist');
+const CLIENT_INDEX = path.join(CLIENT_DIST, 'index.html');
+const hasBuiltClient = fs.existsSync(CLIENT_INDEX);
 
 // Middleware
-app.use(cors());
+app.disable('x-powered-by');
+app.use(createSecurity({
+  port: PORT,
+  extraHosts: splitList(process.env.ALLOWED_HOSTS),
+  extraOrigins: splitList(process.env.ALLOWED_ORIGINS)
+}));
 app.use(express.json());
 
 // Routes
@@ -17,7 +30,7 @@ app.use('/api/jobs', jobsRouter);
 app.use('/api/gmail', gmailRouter);
 // Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Server is running!',
     timestamp: new Date().toISOString()
   });
@@ -28,25 +41,54 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Job Tracker API is healthy' });
 });
 
+// The built web app, so one process on one port is all a user has to run
+if (hasBuiltClient) {
+  app.use(express.static(CLIENT_DIST));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api/') && req.accepts('html')) {
+      return res.sendFile(CLIENT_INDEX);
+    }
+    next();
+  });
+}
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Test it: http://localhost:${PORT}/api/test`);
-  console.log(`API docs: http://localhost:${PORT}/api/jobs`);
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down gracefully...');
-  server.close(() => {
-    db.closeDb();
-    process.exit(0);
+function start() {
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`Job Tracker running at http://localhost:${PORT}`);
+    if (!hasBuiltClient) {
+      console.log('The web app is not built yet. Run "npm run build" (or "npm run dev:client" for development).');
+    }
   });
-});
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Stop the other process or start with PORT=<another port>.`);
+    } else {
+      console.error('Server error:', error.message);
+    }
+    process.exit(1);
+  });
+
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('Shutting down gracefully...');
+    server.close(() => {
+      db.closeDb();
+      process.exit(0);
+    });
+  });
+
+  return server;
+}
+
+if (require.main === module) {
+  start();
+}
 
 module.exports = app;
+module.exports.start = start;

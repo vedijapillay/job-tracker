@@ -21,54 +21,42 @@ A full-stack application to consolidate job applications from multiple platforms
 ## Installation & Setup
 
 ### Prerequisites
-- Node.js 16+ installed
-- npm or yarn package manager
+- [Node.js](https://nodejs.org) **20.17 or newer**
 
 ### Quick Start
 
-1. **Clone the repository:**
 ```bash
-   git clone https://github.com/vedijapillay/job-tracker.git
-   cd job-tracker
+git clone https://github.com/vedijapillay/job-tracker.git
+cd job-tracker
+npm run setup    # installs dependencies and builds the web app
+npm start        # runs everything on one port
 ```
 
-2. **Install dependencies:**
-```bash
-   npm install
-   cd client && npm install && cd ..
-```
+Then open **http://localhost:3000**. That's it: the tracker works fully without any Google setup.
 
-3. **Set up environment variables:**
-```bash
-   cp .env.example .env
-```
-   
-   Then edit `.env` and add your Google OAuth credentials (optional - only needed for Gmail scanning):
+Gmail scanning is optional and needs your own Google credentials; see [Gmail scanning setup](#gmail-scanning-setup-optional) below.
 
+### Gmail scanning setup (optional)
+
+Create a `.env` file (`cp .env.example .env`) containing your own Google OAuth credentials:
+
+```
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/api/gmail/auth/callback
-FRONTEND_URL=http://localhost:5173
-
-
-4. **Start the application:**
-   
-   **Terminal 1 - Backend:**
-```bash
-   npm start
 ```
-   Backend runs on `http://localhost:3000`
 
-   **Terminal 2 - Frontend:**
+and register `http://localhost:3000/api/gmail/auth/callback` as an authorized redirect URI in your Google Cloud project. A step-by-step guide is coming soon.
+
+### Security
+
+The server only listens on `127.0.0.1`, rejects requests with an unexpected `Host` header, and refuses cross-site requests, so other devices on your network and other websites can't read your jobs or use your Gmail connection.
+
+### For developers
+
 ```bash
-   cd client && npm run dev
+npm run dev          # API with auto-reload on :3000
+npm run dev:client   # web app with hot reload on :5173 (proxies /api to :3000)
 ```
-   Frontend runs on `http://localhost:5173`
-
-5. **Open in browser:**
-
-http://localhost:5173
-
 
 ## How to Use
 

@@ -1,18 +1,25 @@
 {
   "name": "job-tracker",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Track your job applications locally, with optional Gmail scanning that detects applications, interviews, offers and rejections. Your data stays on your machine.",
   "scripts": {
+    "setup": "npm install && npm install --prefix client && npm run build --prefix client",
+    "build": "npm run build --prefix client",
     "start": "node server/server.js",
-    "dev": "nodemon server/server.js"
+    "dev": "nodemon server/server.js",
+    "dev:client": "npm run dev --prefix client"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "job-tracker",
+    "job-search",
+    "gmail",
+    "local-first",
+    "privacy"
+  ],
+  "author": "Vedija Pillay",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "googleapis": "^182.0.0",
@@ -20,5 +27,12 @@
   },
   "devDependencies": {
     "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vedijapillay/job-tracker.git"
   }
 }
