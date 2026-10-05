@@ -13,6 +13,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 const { parseFrom, extractJobInfo, detectStatus, htmlToText, cleanBody } = require('../lib/classify');
+const { findMatch, shouldUpdate, collapseByApplication } = require('../lib/match');
 
 // Gmail returns base64url-encoded bodies, possibly nested in multipart parts
 function findPartData(payload, mimeType) {
@@ -103,7 +104,6 @@ router.post('/scan', async (req, res) => {
     }
 
     const detectedJobs = [];
-    const processedEmails = new Set();
     const skipIds = await db.getProcessedEmailIds();
 
     for (const message of messageIds) {
@@ -134,15 +134,6 @@ router.post('/scan', async (req, res) => {
           : parsedDate.toISOString().split('T')[0];
 
         if (status !== 'Review') {
-          // One row per application and status. The same sender and subject can
-          // belong to different jobs, so key on what the email is about instead.
-          const emailKey = (jobTitle
-            ? `${company}|${jobTitle}|${status}`
-            : `${company}|${subject}|${status}`
-          ).toLowerCase();
-          if (processedEmails.has(emailKey)) continue;
-          processedEmails.add(emailKey);
-
           detectedJobs.push({
             id: message.id,
             company,
@@ -159,10 +150,33 @@ router.post('/scan', async (req, res) => {
       }
     }
 
+    // One result per application, then compare against what is already tracked
+    const trackedJobs = await db.getAllJobs();
+    let alreadyTracked = 0;
+    const results = [];
+
+    for (const job of collapseByApplication(detectedJobs)) {
+      const { matchedJob, similarCount } = findMatch(job, trackedJobs);
+
+      if (matchedJob && !shouldUpdate(matchedJob.status, job.status)) {
+        alreadyTracked++; // the tracker is already as far along as this email says
+        continue;
+      }
+
+      results.push({
+        ...job,
+        matchedJob: matchedJob
+          ? { id: matchedJob.id, company: matchedJob.company, jobTitle: matchedJob.jobTitle, status: matchedJob.status }
+          : null,
+        similarCount
+      });
+    }
+
     res.json({
       message: 'Email scan complete',
-      count: detectedJobs.length,
-      detectedJobs
+      count: results.length,
+      alreadyTracked,
+      detectedJobs: results
     });
   } catch (error) {
     console.error('Gmail scan error:', error);

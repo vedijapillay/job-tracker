@@ -188,7 +188,7 @@ function getJobById(id) {
 // Update job
 function updateJob(id, updates) {
   return new Promise((resolve, reject) => {
-    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes'];
+    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes', 'emailId'];
     const updateFields = [];
     const values = [];
 

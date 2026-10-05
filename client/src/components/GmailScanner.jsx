@@ -5,6 +5,7 @@ const STATUSES = ['Applied', 'Rejected', 'Interview Scheduled', 'Recruiter Scree
 export default function GmailScanner({ onJobsDetected }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [detectedJobs, setDetectedJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
 
@@ -41,6 +42,7 @@ export default function GmailScanner({ onJobsDetected }) {
     try {
       setLoading(true)
       setError(null)
+      setNotice(null)
 
       const res = await fetch('/api/gmail/scan', {
         method: 'POST',
@@ -58,6 +60,8 @@ export default function GmailScanner({ onJobsDetected }) {
 
       if (data.detectedJobs && data.detectedJobs.length > 0) {
         setShowModal(true)
+      } else if (data.alreadyTracked > 0) {
+        setNotice(`Your tracker is up to date: ${data.alreadyTracked} email${data.alreadyTracked === 1 ? '' : 's'} matched jobs you already track.`)
       } else {
         setError('No job-related emails detected. Try checking your inbox manually.')
       }
@@ -93,6 +97,29 @@ export default function GmailScanner({ onJobsDetected }) {
     try {
       const res = await markProcessed(job, 'dismissed')
       if (!res.ok) throw new Error('Failed to dismiss email')
+      removeDetected(job)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  // The email is about a job that is already tracked: move it forward instead of adding a row
+  const updateExistingJob = async (job) => {
+    try {
+      const res = await fetch(`/api/jobs/${job.matchedJob.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: job.status,
+          lastEmailDate: job.lastEmailDate,
+          lastEmailSubject: job.lastEmailSubject,
+          emailId: job.id
+        })
+      })
+
+      if (!res.ok) throw new Error('Failed to update job')
+
+      if (onJobsDetected) onJobsDetected(job)
       removeDetected(job)
     } catch (err) {
       setError(err.message)
@@ -159,6 +186,19 @@ export default function GmailScanner({ onJobsDetected }) {
         </div>
       )}
 
+      {/* Info Message */}
+      {notice && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">
+          {notice}
+          <button
+            onClick={() => setNotice(null)}
+            className="ml-4 text-blue-800 hover:text-blue-950 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Modal: Detected Jobs */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -186,6 +226,21 @@ export default function GmailScanner({ onJobsDetected }) {
                   key={job.id || index}
                   className="border border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition"
                 >
+                  {/* Existing job this email belongs to */}
+                  {job.matchedJob && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-900">
+                      Already tracking <strong>{job.matchedJob.company}</strong>
+                      {job.matchedJob.jobTitle ? ` – ${job.matchedJob.jobTitle}` : ''}
+                      {' '}({job.matchedJob.status}). This email suggests <strong>{job.status}</strong>.
+                    </div>
+                  )}
+                  {!job.matchedJob && job.similarCount > 0 && (
+                    <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-900">
+                      {job.similarCount} jobs at this company are already tracked and this email has no
+                      job title, so it can't be matched automatically.
+                    </div>
+                  )}
+
                   {/* Company & Status (editable) */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
@@ -238,12 +293,29 @@ export default function GmailScanner({ onJobsDetected }) {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => addJobToTracker(job)}
-                      className="flex-1 bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
-                    >
-                      ✓ Add to Tracker
-                    </button>
+                    {job.matchedJob ? (
+                      <>
+                        <button
+                          onClick={() => updateExistingJob(job)}
+                          className="flex-1 bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
+                        >
+                          ↻ Update status
+                        </button>
+                        <button
+                          onClick={() => addJobToTracker(job)}
+                          className="bg-white text-purple-700 border border-purple-300 px-4 py-2 rounded hover:bg-purple-50 transition"
+                        >
+                          + Add as new job
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => addJobToTracker(job)}
+                        className="flex-1 bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 transition"
+                      >
+                        ✓ Add to Tracker
+                      </button>
+                    )}
                     <button
                       onClick={() => dismissJob(job)}
                       className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded hover:bg-gray-100 transition"

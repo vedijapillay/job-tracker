@@ -123,7 +123,7 @@ router.put('/:id', async (req, res) => {
     }
 
     // Validate update fields
-    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes'];
+    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes', 'emailId'];
     const invalidFields = Object.keys(updates).filter(field => !allowedFields.includes(field));
     
     if (invalidFields.length > 0) {
