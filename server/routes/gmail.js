@@ -12,7 +12,7 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-const { parseFrom, extractJobInfo, detectStatus, htmlToText, cleanBody } = require('../lib/classify');
+const { parseFrom, extractJobInfo, classify, htmlToText, cleanBody } = require('../lib/classify');
 const { findMatch, shouldUpdate, collapseByApplication } = require('../lib/match');
 
 // Gmail returns base64url-encoded bodies, possibly nested in multipart parts
@@ -126,7 +126,7 @@ router.post('/scan', async (req, res) => {
 
         const body = cleanBody(extractBody(messageData.payload));
 
-        const status = detectStatus(from, subject, body);
+        const { status, confidence } = classify(from, subject, body);
         const { company, jobTitle } = extractJobInfo(from, subject, body);
         const parsedDate = new Date(date);
         const emailDate = isNaN(parsedDate)
@@ -139,6 +139,7 @@ router.post('/scan', async (req, res) => {
             company,
             jobTitle,
             status,
+            confidence,
             source: 'Gmail',
             lastEmailDate: emailDate,
             lastEmailSubject: subject,

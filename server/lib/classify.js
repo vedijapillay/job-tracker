@@ -1,5 +1,7 @@
 // Email classification helpers for the Gmail scanner
 
+const { MIN_SCORE, SIGNALS, STAGE_STATUSES, HYPOTHETICAL, WEAK_GUARD, STATUS_PRIORITY } = require('./signals');
+
 // Applicant-tracking systems send on behalf of employers, so the sender domain
 // is not the company name.
 const ATS_DOMAINS = [
@@ -24,45 +26,6 @@ const IGNORED_DOMAINS = [
 const DIGEST_SUBJECT = /(new jobs?|more jobs|jobs? (alert|for you|like)|job recommendations?|recommended jobs?|jobs? you may like|similar jobs)\b/i;
 
 const JOB_CONTEXT = /\b(application|applied|applying|position|candidate|candidacy|recruiter|recruiting|hiring|job opening|role)\b/;
-
-const REJECTION_PHRASES = [
-  'regret to inform',
-  'not selected',
-  'not moving forward',
-  'not be moving forward',
-  'decided not to move forward',
-  'decided not to proceed',
-  'move forward with other candidates',
-  'moving forward with other candidates',
-  'pursue other candidates',
-  'other candidates',
-  'position has been filled',
-  'will not be proceeding',
-  'unable to offer you',
-  'unfortunately'
-];
-
-const INTERVIEW_PHRASES = [
-  'interview',
-  'phone screen',
-  'recruiter screen',
-  'next round',
-  'technical round',
-  'hiring manager'
-];
-
-const APPLIED_PHRASES = [
-  'thank you for applying',
-  'thank you for your application',
-  'thanks for your application',
-  'thanks for applying',
-  'received your application',
-  'application received',
-  'application has been received',
-  'application is complete',
-  'successfully submitted your application',
-  'your application was sent'
-];
 
 const MAX_BODY_CHARS = 1000;
 
@@ -218,32 +181,68 @@ function isCalendarInvite(subject) {
     /^\s*(accepted|declined|tentatively accepted):/i.test(subject);
 }
 
-function includesAny(text, phrases) {
-  return phrases.some(p => text.includes(p));
+// Drop sentences that only describe what might happen ("if selected, we will
+// schedule an interview") so they don't count as real scheduling
+function removeHypothetical(text) {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter(sentence => !HYPOTHETICAL.some(re => re.test(sentence)))
+    .join(' ');
 }
 
-// Returns 'Rejected' | 'Interview Scheduled' | 'Applied' | 'Review'
-function detectStatus(from, subject, body) {
-  const { local, domain } = parseFrom(from);
-  if (IGNORED_LOCAL_PARTS.includes(local) || isIgnoredDomain(domain)) return 'Review';
-  if (isCalendarInvite(subject) || DIGEST_SUBJECT.test(subject)) return 'Review';
+function scoreStatus(status, subject, body, text) {
+  let total = 0;
+  const reasons = [];
+  const weakAllowed = !WEAK_GUARD.test(text);
 
-  const subjectLower = subject.toLowerCase();
-  const text = `${subjectLower}\n${body.toLowerCase()}`;
+  for (const signal of SIGNALS[status]) {
+    if (signal.weak && !weakAllowed) continue;
+    if (signal.subject && signal.re.test(subject)) {
+      total += signal.subject;
+      reasons.push(`subject:${signal.label}`);
+    }
+    if (signal.body && signal.re.test(body)) {
+      total += signal.body;
+      reasons.push(`body:${signal.label}`);
+    }
+  }
+  return { total, reasons };
+}
+
+// Returns { status, confidence: 'high' | 'medium' | 'low' | null, reasons }.
+// status is one of the tracker statuses, or 'Review' when nothing scores enough.
+function classify(from, subject, body) {
+  const review = { status: 'Review', confidence: null, reasons: [] };
+
+  const { local, domain } = parseFrom(from);
+  if (IGNORED_LOCAL_PARTS.includes(local) || isIgnoredDomain(domain)) return review;
+  if (isCalendarInvite(subject) || DIGEST_SUBJECT.test(subject)) return review;
+
+  const subjectText = normalizeText(subject).toLowerCase();
+  const bodyText = normalizeText(body).toLowerCase();
+  const text = `${subjectText}\n${bodyText}`;
 
   // Everything below requires job-related wording so generic mail is ignored
-  if (!JOB_CONTEXT.test(text)) return 'Review';
+  if (!JOB_CONTEXT.test(text)) return review;
 
-  // Rejections often mention interviews/applications, so check them first
-  if (includesAny(text, REJECTION_PHRASES)) return 'Rejected';
-  // "Thanks for applying" in the subject is a confirmation even if the body
-  // talks about possible interviews
-  if (includesAny(subjectLower, APPLIED_PHRASES) && !includesAny(subjectLower, INTERVIEW_PHRASES)) return 'Applied';
-  if (includesAny(subjectLower, INTERVIEW_PHRASES)) return 'Interview Scheduled';
-  if (includesAny(text, APPLIED_PHRASES)) return 'Applied';
-  if (includesAny(text, INTERVIEW_PHRASES)) return 'Interview Scheduled';
+  const stageBody = removeHypothetical(bodyText);
+  let best = null;
 
-  return 'Review';
+  for (const status of STATUS_PRIORITY) {
+    const { total, reasons } = scoreStatus(status, subjectText, STAGE_STATUSES.has(status) ? stageBody : bodyText, text);
+    if (total < MIN_SCORE) continue;
+    // STATUS_PRIORITY order means an equal score never replaces an earlier status
+    if (!best || total > best.total) best = { status, total, reasons };
+  }
+
+  if (!best) return review;
+  const confidence = best.total >= 9 ? 'high' : best.total >= 6 ? 'medium' : 'low';
+  return { status: best.status, confidence, reasons: best.reasons };
 }
 
-module.exports = { parseFrom, extractCompany, extractJobTitle, extractJobInfo, detectStatus, htmlToText, stripQuoted, normalizeText, cleanBody, isIgnoredDomain };
+// Status only; see classify() for confidence and reasons
+function detectStatus(from, subject, body) {
+  return classify(from, subject, body).status;
+}
+
+module.exports = { parseFrom, extractCompany, extractJobTitle, extractJobInfo, detectStatus, classify, htmlToText, stripQuoted, normalizeText, cleanBody, isIgnoredDomain };
