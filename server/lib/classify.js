@@ -245,4 +245,8 @@ function detectStatus(from, subject, body) {
   return classify(from, subject, body).status;
 }
 
-module.exports = { parseFrom, extractCompany, extractJobTitle, extractJobInfo, detectStatus, classify, htmlToText, stripQuoted, normalizeText, cleanBody, isIgnoredDomain };
+// ATS and job-board domains: their mail is job correspondence even when Gmail
+// files it under Promotions or Social
+const TRUSTED_SENDER_DOMAINS = [...ATS_DOMAINS, ...AGGREGATOR_DOMAINS];
+
+module.exports = { TRUSTED_SENDER_DOMAINS, parseFrom, extractCompany, extractJobTitle, extractJobInfo, detectStatus, classify, htmlToText, stripQuoted, normalizeText, cleanBody, isIgnoredDomain };

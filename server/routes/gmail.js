@@ -13,6 +13,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 const { parseFrom, extractJobInfo, classify, htmlToText, cleanBody } = require('../lib/classify');
+const { buildSearchQueries } = require('../lib/query');
 const { findMatch, shouldUpdate, collapseByApplication } = require('../lib/match');
 
 // Gmail returns base64url-encoded bodies, possibly nested in multipart parts
@@ -88,13 +89,18 @@ router.post('/scan', async (req, res) => {
 
     const authGmail = google.gmail({ version: 'v1', auth: oauth2ClientTemp });
 
-    const messagesRes = await authGmail.users.messages.list({
-      userId: 'me',
-      maxResults: 100,
-      q: 'in:inbox newer_than:180d (application OR applying OR applied OR position OR candidate OR interview OR recruiter)'
-    });
-
-    const messageIds = messagesRes.data.messages || [];
+    // Run each search and merge, keeping one entry per message
+    const seen = new Set();
+    const messageIds = [];
+    for (const { q, maxResults } of buildSearchQueries()) {
+      const listRes = await authGmail.users.messages.list({ userId: 'me', maxResults, q });
+      for (const message of listRes.data.messages || []) {
+        if (!seen.has(message.id)) {
+          seen.add(message.id);
+          messageIds.push(message);
+        }
+      }
+    }
 
     if (messageIds.length === 0) {
       return res.json({
@@ -136,6 +142,7 @@ router.post('/scan', async (req, res) => {
         if (status !== 'Review') {
           detectedJobs.push({
             id: message.id,
+            receivedAt: Number(messageData.internalDate) || 0,
             company,
             jobTitle,
             status,
@@ -156,6 +163,9 @@ router.post('/scan', async (req, res) => {
     let alreadyTracked = 0;
     const results = [];
 
+    // Merged searches are not in date order; collapsing keeps the newest on ties
+    detectedJobs.sort((a, b) => b.receivedAt - a.receivedAt);
+
     for (const job of collapseByApplication(detectedJobs)) {
       const { matchedJob, similarCount } = findMatch(job, trackedJobs);
 
@@ -164,8 +174,9 @@ router.post('/scan', async (req, res) => {
         continue;
       }
 
+      const { receivedAt, ...rest } = job;
       results.push({
-        ...job,
+        ...rest,
         matchedJob: matchedJob
           ? { id: matchedJob.id, company: matchedJob.company, jobTitle: matchedJob.jobTitle, status: matchedJob.status }
           : null,
