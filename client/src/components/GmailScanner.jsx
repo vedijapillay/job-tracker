@@ -6,18 +6,50 @@ export default function GmailScanner({ onJobsDetected }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [connected, setConnected] = useState(false)
   const [detectedJobs, setDetectedJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
 
-  // Returning from Google: the callback redirects here with the token in the URL fragment
+  const refreshConnectionStatus = async () => {
+    try {
+      const res = await fetch('/api/gmail/status')
+      const data = await res.json()
+      setConnected(Boolean(data.connected))
+      return Boolean(data.connected)
+    } catch {
+      return false
+    }
+  }
+
+  // On load: learn whether Gmail is connected, and finish the sign-in if we
+  // were just redirected back from Google
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.slice(1))
-    const accessToken = params.get('gmail_token')
-    if (accessToken) {
+    refreshConnectionStatus()
+    if (window.location.hash === '#gmail=connected') {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
-      scanGmailEmails(accessToken)
+      scanGmailEmails()
     }
   }, [])
+
+  // Scan straight away when already connected, otherwise sign in first
+  const handleScanClick = async () => {
+    if (await refreshConnectionStatus()) {
+      scanGmailEmails()
+    } else {
+      startOAuthFlow()
+    }
+  }
+
+  const disconnectGmail = async () => {
+    try {
+      const res = await fetch('/api/gmail/disconnect', { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to disconnect Gmail')
+      setConnected(false)
+      setNotice('Gmail disconnected. You will be asked to sign in on the next scan.')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   const startOAuthFlow = async () => {
     setLoading(true)
@@ -38,20 +70,22 @@ export default function GmailScanner({ onJobsDetected }) {
     }
   }
 
-  const scanGmailEmails = async (accessToken) => {
+  const scanGmailEmails = async () => {
     try {
       setLoading(true)
       setError(null)
       setNotice(null)
 
-      const res = await fetch('/api/gmail/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken })
-      })
+      const res = await fetch('/api/gmail/scan', { method: 'POST' })
 
       if (!res.ok) {
         const errData = await res.json()
+        // Access was revoked or expired: sign in again instead of showing an error
+        if (errData.code === 'reauth_required' || errData.code === 'not_connected') {
+          setConnected(false)
+          await startOAuthFlow()
+          return
+        }
         throw new Error(errData.error || 'Failed to scan Gmail')
       }
 
@@ -166,12 +200,20 @@ export default function GmailScanner({ onJobsDetected }) {
     <>
       {/* Scan Button */}
       <button
-        onClick={startOAuthFlow}
+        onClick={handleScanClick}
         disabled={loading}
         className="bg-purple-600 text-white px-6 py-2 rounded font-semibold hover:bg-purple-700 disabled:bg-gray-400"
       >
         {loading ? '⏳ Working...' : '🔍 Scan Gmail'}
       </button>
+      {connected && !loading && (
+        <button
+          onClick={disconnectGmail}
+          className="self-center text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          Disconnect Gmail
+        </button>
+      )}
 
       {/* Error Message */}
       {error && (

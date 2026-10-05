@@ -2,7 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // Database path
-const DB_PATH = path.join(__dirname, '../jobs.db');
+const DB_PATH = process.env.JOBS_DB_PATH || path.join(__dirname, '../jobs.db');
 
 // Initialize database
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -39,6 +39,7 @@ function initializeSchema() {
     } else {
       console.log('Jobs table initialized');
       ensureEmailIdColumn();
+      ensureGmailTables();
     }
   });
 
@@ -69,6 +70,80 @@ function ensureEmailIdColumn() {
   });
   // Earlier versions recorded added emails here; they are now tracked on the job itself
   db.run("DELETE FROM processed_emails WHERE reason = 'added'");
+}
+
+function ensureGmailTables() {
+  // Single row: the one Gmail account connected to this local tracker
+  db.run(`
+    CREATE TABLE IF NOT EXISTS gmail_auth (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      refreshToken TEXT NOT NULL,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  // Messages already judged not job-related, per classifier version, so scans skip them
+  db.run(`
+    CREATE TABLE IF NOT EXISTS scanned_emails (
+      messageId TEXT PRIMARY KEY,
+      version TEXT NOT NULL
+    )
+  `);
+}
+
+function run(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve({ changes: this.changes });
+    });
+  });
+}
+
+function saveRefreshToken(refreshToken) {
+  return run(
+    'INSERT OR REPLACE INTO gmail_auth (id, refreshToken, updatedAt) VALUES (1, ?, CURRENT_TIMESTAMP)',
+    [refreshToken]
+  );
+}
+
+function getRefreshToken() {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT refreshToken FROM gmail_auth WHERE id = 1', (err, row) => {
+      if (err) reject(err);
+      else resolve(row ? row.refreshToken : null);
+    });
+  });
+}
+
+function clearRefreshToken() {
+  return run('DELETE FROM gmail_auth WHERE id = 1');
+}
+
+// Forget judgments made by an older version of the classifier
+function pruneIgnoredEmails(version) {
+  return run('DELETE FROM scanned_emails WHERE version != ?', [version]);
+}
+
+function getIgnoredEmailIds(version) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT messageId FROM scanned_emails WHERE version = ?', [version], (err, rows) => {
+      if (err) reject(err);
+      else resolve(new Set(rows.map(row => row.messageId)));
+    });
+  });
+}
+
+function markEmailsIgnored(messageIds, version) {
+  if (messageIds.length === 0) return Promise.resolve({ changes: 0 });
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN');
+      const stmt = db.prepare('INSERT OR REPLACE INTO scanned_emails (messageId, version) VALUES (?, ?)');
+      for (const id of messageIds) stmt.run(id, version);
+      stmt.finalize();
+      db.run('COMMIT', (err) => (err ? reject(err) : resolve({ changes: messageIds.length })));
+    });
+  });
 }
 
 // Record a Gmail message as dismissed or added
@@ -290,6 +365,12 @@ module.exports = {
   deleteJob,
   deleteJobs,
   markEmailProcessed,
+  saveRefreshToken,
+  getRefreshToken,
+  clearRefreshToken,
+  pruneIgnoredEmails,
+  getIgnoredEmailIds,
+  markEmailsIgnored,
   getProcessedEmailIds,
   getStats,
   closeDb
