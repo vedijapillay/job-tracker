@@ -6,6 +6,8 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [pendingDelete, setPendingDelete] = useState(null) // { ids, message }
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState('')
@@ -38,7 +40,10 @@ export default function App() {
       const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch jobs')
       const data = await res.json()
-      setJobs(data.jobs || [])
+      const fetched = data.jobs || []
+      setJobs(fetched)
+      // Drop selections for jobs that are no longer shown (filtered out or deleted)
+      setSelectedIds(prev => prev.filter(id => fetched.some(job => job.id === id)))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -89,11 +94,42 @@ export default function App() {
     }
   }
 
-  const handleDeleteJob = async (id) => {
-    if (!confirm('Are you sure you want to delete this job?')) return
+  const requestDeleteJob = (job) => {
+    setPendingDelete({
+      ids: [job.id],
+      message: `Delete ${job.company} - ${job.jobTitle}? This cannot be undone.`
+    })
+  }
+
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+  }
+
+  const allSelected = jobs.length > 0 && selectedIds.length === jobs.length
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : jobs.map(job => job.id))
+  }
+
+  const requestDeleteSelected = () => {
+    const count = selectedIds.length
+    setPendingDelete({
+      ids: selectedIds,
+      message: `Delete ${count} selected job${count === 1 ? '' : 's'}? This cannot be undone.`
+    })
+  }
+
+  const confirmDelete = async () => {
+    const { ids } = pendingDelete
+    setPendingDelete(null)
     try {
-      const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete job')
+      const res = await fetch('/api/jobs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      })
+      if (!res.ok) throw new Error('Failed to delete jobs')
+      setSelectedIds(prev => prev.filter(id => !ids.includes(id)))
       fetchJobs()
     } catch (err) {
       setError(err.message)
@@ -170,6 +206,14 @@ export default function App() {
           >
             📥 Export CSV
           </button>
+          {selectedIds.length > 0 && (
+            <button
+              onClick={requestDeleteSelected}
+              className="bg-red-600 text-white px-6 py-2 rounded font-semibold hover:bg-red-700"
+            >
+              🗑 Delete selected ({selectedIds.length})
+            </button>
+          )}
         </div>
 
         {/* Add Job Form */}
@@ -275,6 +319,14 @@ export default function App() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-100 border-b">
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Select all jobs"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left font-semibold">Company</th>
                   <th className="px-6 py-3 text-left font-semibold">Job Title</th>
                   <th className="px-6 py-3 text-left font-semibold">Status</th>
@@ -286,6 +338,14 @@ export default function App() {
               <tbody>
                 {jobs.map(job => (
                   <tr key={job.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(job.id)}
+                        onChange={() => toggleSelected(job.id)}
+                        aria-label={`Select ${job.company}`}
+                      />
+                    </td>
                     <td className="px-6 py-3 font-semibold">{job.company}</td>
                     <td className="px-6 py-3">{job.jobTitle}</td>
                     <td className="px-6 py-3">
@@ -303,7 +363,7 @@ export default function App() {
                     <td className="px-6 py-3 text-sm">{job.appliedDate}</td>
                     <td className="px-6 py-3">
                       <button
-                        onClick={() => handleDeleteJob(job.id)}
+                        onClick={() => requestDeleteJob(job)}
                         className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
                       >
                         Delete
@@ -315,6 +375,30 @@ export default function App() {
             </table>
           )}
         </div>
+
+        {/* Delete confirmation */}
+        {pendingDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h2 className="text-xl font-bold mb-2">Confirm delete</h2>
+              <p className="text-gray-700 mb-6">{pendingDelete.message}</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setPendingDelete(null)}
+                  className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Footer */}
         {jobs.length > 0 && (

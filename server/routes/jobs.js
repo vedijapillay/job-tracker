@@ -144,6 +144,27 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/jobs - Delete several jobs: { ids: [1, 2, 3] }
+router.delete('/', async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+
+    if (!Array.isArray(ids) || ids.length === 0 || ids.some(id => !Number.isInteger(id))) {
+      return res.status(400).json({ error: 'ids must be a non-empty array of integers' });
+    }
+
+    const result = await db.deleteJobs(ids);
+
+    res.json({
+      message: 'Jobs deleted successfully',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Error deleting jobs:', error);
+    res.status(500).json({ error: 'Failed to delete jobs', details: error.message });
+  }
+});
+
 // DELETE /api/jobs/:id - Delete a job
 router.delete('/:id', async (req, res) => {
   try {

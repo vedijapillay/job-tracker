@@ -176,6 +176,20 @@ function deleteJob(id) {
   });
 }
 
+// Delete several jobs in one statement
+function deleteJobs(ids) {
+  return new Promise((resolve, reject) => {
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`DELETE FROM jobs WHERE id IN (${placeholders})`, ids, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ deletedCount: this.changes });
+      }
+    });
+  });
+}
+
 // Get job statistics
 function getStats() {
   return new Promise((resolve, reject) => {
@@ -217,6 +231,7 @@ module.exports = {
   getJobById,
   updateJob,
   deleteJob,
+  deleteJobs,
   getStats,
   closeDb
 };
