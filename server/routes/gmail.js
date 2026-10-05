@@ -12,22 +12,27 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-const { parseFrom, extractCompany, extractJobTitle, detectStatus } = require('../lib/classify');
+const { parseFrom, extractJobInfo, detectStatus, htmlToText, cleanBody } = require('../lib/classify');
 
 // Gmail returns base64url-encoded bodies, possibly nested in multipart parts
-function extractBody(payload) {
+function findPartData(payload, mimeType) {
   if (!payload) return '';
-  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) {
+  if (payload.mimeType === mimeType && payload.body && payload.body.data) {
     return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
   }
   for (const part of payload.parts || []) {
-    const text = extractBody(part);
-    if (text) return text;
-  }
-  if (!payload.parts && payload.body && payload.body.data) {
-    return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
+    const data = findPartData(part, mimeType);
+    if (data) return data;
   }
   return '';
+}
+
+// Prefer text/plain; many ATS and LinkedIn emails are HTML-only, so fall back to that
+function extractBody(payload) {
+  const plain = findPartData(payload, 'text/plain');
+  if (plain.trim()) return plain;
+  const html = findPartData(payload, 'text/html');
+  return html ? htmlToText(html) : '';
 }
 
 // ROUTES START HERE
@@ -119,21 +124,25 @@ router.post('/scan', async (req, res) => {
         const subject = headers.find(h => h.name === 'Subject')?.value || '';
         const date = headers.find(h => h.name === 'Date')?.value || '';
 
-        const body = extractBody(messageData.payload);
-
-        const emailKey = `${from}|${subject}`;
-        if (processedEmails.has(emailKey)) continue;
-        processedEmails.add(emailKey);
+        const body = cleanBody(extractBody(messageData.payload));
 
         const status = detectStatus(from, subject, body);
-        const company = extractCompany(from, subject);
-        const jobTitle = extractJobTitle(subject, body);
+        const { company, jobTitle } = extractJobInfo(from, subject, body);
         const parsedDate = new Date(date);
         const emailDate = isNaN(parsedDate)
           ? new Date().toISOString().split('T')[0]
           : parsedDate.toISOString().split('T')[0];
 
         if (status !== 'Review') {
+          // One row per application and status. The same sender and subject can
+          // belong to different jobs, so key on what the email is about instead.
+          const emailKey = (jobTitle
+            ? `${company}|${jobTitle}|${status}`
+            : `${company}|${subject}|${status}`
+          ).toLowerCase();
+          if (processedEmails.has(emailKey)) continue;
+          processedEmails.add(emailKey);
+
           detectedJobs.push({
             id: message.id,
             company,
@@ -170,7 +179,7 @@ router.post('/scan', async (req, res) => {
 });
 
 // POST /api/gmail/processed - Remember an email so future scans skip it
-// body: { id, reason: 'dismissed' | 'added', senderEmail?, subject? }
+// body: { id, reason: 'dismissed', senderEmail?, subject? }
 router.post('/processed', async (req, res) => {
   try {
     const { id, reason, senderEmail, subject } = req.body || {};
@@ -178,8 +187,8 @@ router.post('/processed', async (req, res) => {
     if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'Email id required' });
     }
-    if (!['dismissed', 'added'].includes(reason)) {
-      return res.status(400).json({ error: "reason must be 'dismissed' or 'added'" });
+    if (reason !== 'dismissed') {
+      return res.status(400).json({ error: "reason must be 'dismissed'" });
     }
 
     await db.markEmailProcessed({ messageId: id, reason, sender: senderEmail, subject });

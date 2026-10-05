@@ -5,7 +5,7 @@ const db = require('../db');
 // POST /api/jobs - Create a new job
 router.post('/', async (req, res) => {
   try {
-    const { company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes } = req.body;
+    const { company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId } = req.body;
 
     // Validate required fields
     if (!company || !jobTitle || !appliedDate) {
@@ -22,7 +22,8 @@ router.post('/', async (req, res) => {
       source,
       lastEmailDate,
       lastEmailSubject,
-      notes
+      notes,
+      emailId
     });
 
     res.status(201).json({

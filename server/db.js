@@ -38,6 +38,7 @@ function initializeSchema() {
       console.error('Error creating table:', err.message);
     } else {
       console.log('Jobs table initialized');
+      ensureEmailIdColumn();
     }
   });
 
@@ -57,6 +58,19 @@ function initializeSchema() {
   });
 }
 
+// Jobs remember the Gmail message they came from, so deleting a job lets that
+// email show up in the next scan again
+function ensureEmailIdColumn() {
+  db.all('PRAGMA table_info(jobs)', (err, columns) => {
+    if (err || columns.some(col => col.name === 'emailId')) return;
+    db.run('ALTER TABLE jobs ADD COLUMN emailId TEXT', (alterErr) => {
+      if (alterErr) console.error('Error adding emailId column:', alterErr.message);
+    });
+  });
+  // Earlier versions recorded added emails here; they are now tracked on the job itself
+  db.run("DELETE FROM processed_emails WHERE reason = 'added'");
+}
+
 // Record a Gmail message as dismissed or added
 function markEmailProcessed({ messageId, reason, sender, subject }) {
   return new Promise((resolve, reject) => {
@@ -71,7 +85,11 @@ function markEmailProcessed({ messageId, reason, sender, subject }) {
 // Set of Gmail message IDs the scan should skip
 function getProcessedEmailIds() {
   return new Promise((resolve, reject) => {
-    db.all('SELECT messageId FROM processed_emails', (err, rows) => {
+    db.all(`
+      SELECT messageId FROM processed_emails
+      UNION
+      SELECT emailId FROM jobs WHERE emailId IS NOT NULL
+    `, (err, rows) => {
       if (err) {
         reject(err);
       } else {
@@ -84,14 +102,14 @@ function getProcessedEmailIds() {
 // Insert a new job
 function insertJob(job) {
   return new Promise((resolve, reject) => {
-    const { company, jobTitle, appliedDate, status = 'Applied', source, lastEmailDate, lastEmailSubject, notes } = job;
+    const { company, jobTitle, appliedDate, status = 'Applied', source, lastEmailDate, lastEmailSubject, notes, emailId = null } = job;
     
     const query = `
-      INSERT INTO jobs (company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO jobs (company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    db.run(query, [company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes], function(err) {
+    db.run(query, [company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId], function(err) {
       if (err) {
         reject(err);
       } else {

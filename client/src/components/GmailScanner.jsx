@@ -111,7 +111,8 @@ export default function GmailScanner({ onJobsDetected }) {
           status: job.status,
           source: job.source,
           lastEmailDate: job.lastEmailDate,
-          lastEmailSubject: job.lastEmailSubject
+          lastEmailSubject: job.lastEmailSubject,
+          emailId: job.id
         })
       })
 
@@ -122,8 +123,6 @@ export default function GmailScanner({ onJobsDetected }) {
         onJobsDetected(job)
       }
 
-      // Best effort: the job is saved either way, this only prevents it reappearing
-      markProcessed(job, 'added').catch(() => {})
       removeDetected(job)
     } catch (err) {
       setError(err.message)
