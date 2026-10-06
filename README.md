@@ -130,7 +130,15 @@ Issues or questions? [Open an issue on GitHub](https://github.com/vedijapillay/j
 - [ ] UI improvements and customization
 - [ ] Dark mode
 - [ ] Mobile app (React Native)
+## Privacy
 
+All job data is stored locally on your machine in `jobs.db`. 
+No data is sent to our servers. Gmail emails are scanned on-demand only.
+Your Gmail credentials are never stored.
+
+## Terms of Service
+
+This project is open source under MIT License. Use at your own risk.
 ---
 
 **Built with ❤️ for job seekers everywhere**
