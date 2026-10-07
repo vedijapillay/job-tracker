@@ -14,6 +14,16 @@ const ATS_DOMAINS = [
 // Job boards that send on behalf of employers: the sender is never the company
 const AGGREGATOR_DOMAINS = ['ziprecruiter.com', 'linkedin.com', 'indeed.com', 'indeedemail.com'];
 
+// Personal mail providers: the sender's domain says nothing about the employer
+const FREE_MAIL_NAMES = new Set([
+  'gmail', 'googlemail', 'outlook', 'hotmail', 'live', 'msn', 'yahoo', 'ymail', 'icloud',
+  'aol', 'protonmail', 'proton', 'gmx', 'zoho', 'fastmail'
+]);
+const FREE_MAIL_DOMAINS = new Set(['me.com', 'mac.com', 'pm.me', 'hey.com', 'mail.com']);
+
+// Second-level parts of country domains, as in acme.co.uk or acme.com.au
+const COUNTRY_SECOND_LEVELS = new Set(['co', 'com', 'org', 'net', 'ac', 'gov', 'edu']);
+
 // Senders that are never job-application correspondence
 const IGNORED_LOCAL_PARTS = ['invitations', 'calendar-notification', 'calendar'];
 const IGNORED_DOMAINS = [
@@ -104,6 +114,36 @@ function isIgnoredDomain(domain) {
   return matchesDomain(domain, IGNORED_DOMAINS);
 }
 
+// The registrable name of a domain: mail.nordstrom.com -> nordstrom, mail.acme.co.uk -> acme
+function domainName(domain) {
+  const labels = domain.split('.');
+  if (labels.length < 2) return labels[0];
+  const second = labels[labels.length - 2];
+  if (labels.length >= 3 && COUNTRY_SECOND_LEVELS.has(second) && labels[labels.length - 1].length === 2) {
+    return labels[labels.length - 3];
+  }
+  return second;
+}
+
+function isFreeMailDomain(domain) {
+  const labels = domain.split('.');
+  return FREE_MAIL_NAMES.has(domainName(domain)) || FREE_MAIL_DOMAINS.has(labels.slice(-2).join('.'));
+}
+
+// A personal address can still sign as the employer: "Acme Robotics Careers" -> "Acme Robotics".
+// Only collective senders count. A person's name ("Jane Doe") or a person with a
+// title ("Jane Doe, Recruiter", "Jane | Talent Acquisition") says nothing about the
+// employer, so those stay unknown. A wrong company is worse than a blank one.
+const SENDER_ROLE_WORDS = /\b(careers?|recruiting|recruitment|recruiters|talent|acquisition|hiring|jobs|hr|human resources|people|staffing|team)\b/gi;
+const PERSON_WITH_TITLE = /[,|@\u2013\u2014]|\s-\s|\brecruiter\b/i;
+
+function companyFromSenderName(name) {
+  if (PERSON_WITH_TITLE.test(name)) return null;
+  if (!new RegExp(SENDER_ROLE_WORDS.source, 'i').test(name)) return null;
+  const cleaned = name.replace(SENDER_ROLE_WORDS, ' ').replace(/[^\w&.' -]/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.length >= 2 ? cleaned : null;
+}
+
 function extractCompany(from, subject = '') {
   const { name, local, domain } = parseFrom(from);
   if (!domain) return 'Unknown';
@@ -125,10 +165,10 @@ function extractCompany(from, subject = '') {
   // ZipRecruiter, LinkedIn etc. never name the employer in the sender
   if (matchesDomain(domain, AGGREGATOR_DOMAINS)) return 'Unknown';
 
-  // Second-level label: mail.nordstrom.com -> Nordstrom
-  const labels = domain.split('.');
-  const label = labels.length >= 2 ? labels[labels.length - 2] : labels[0];
-  return titleCase(label);
+  if (isFreeMailDomain(domain)) return companyFromSenderName(name) || 'Unknown';
+
+  // mail.nordstrom.com -> Nordstrom
+  return titleCase(domainName(domain));
 }
 
 function extractJobTitle(subject, body) {

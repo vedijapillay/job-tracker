@@ -113,7 +113,7 @@ I checked each one against the app's classifier:
 
 Notes:
 - Keep the subject lines exactly as written. The app finds the company name from "your application to <Company>" at the end of the subject.
-- Emails sent from a personal `@gmail.com` address would normally show the company as "Gmail". The subjects above avoid that for the demo, but it is a real limitation worth fixing before launch.
+- The company comes from "your application to <Company>" in the subject first. If the subject doesn't name one, the app falls back to the sender, and a personal address (Gmail, Outlook and so on) shows "Unknown" unless the sender name looks like an employer team, such as "Acme Careers". The subjects above name the company, so the demo is unaffected.
 - If a sample lands in Promotions or Social, drag it to **Primary**. The scan skips those tabs for unknown senders.
 
 ---
