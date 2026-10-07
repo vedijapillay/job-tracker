@@ -38,14 +38,9 @@ Gmail scanning is optional and needs your own Google credentials; see [Gmail sca
 
 ### Gmail scanning setup (optional)
 
-Create a `.env` file (`cp .env.example .env`) containing your own Google OAuth credentials:
+Click **Scan Gmail** (or **Gmail setup**) and the app walks you through connecting your inbox. It uses **your own free Google Cloud project**, so nothing is shared with anyone and your emails never leave your computer. You create the project once (about 10 minutes), paste the Client ID and secret into the app, and click **Save and test**.
 
-```
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-```
-
-and register `http://localhost:3000/api/gmail/auth/callback` as an authorized redirect URI in your Google Cloud project. A step-by-step guide is coming soon.
+The credentials are stored only in your local database. Developers can instead put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in a `.env` file (see `.env.example`); credentials saved in the app take precedence.
 
 ### Security
 
@@ -112,8 +107,6 @@ Issues or questions? [Open an issue on GitHub](https://github.com/vedijapillay/j
 
 ## Roadmap
 
-- [ ] Refresh token handling (no re-consent needed)
-- [ ] Batch email fetching for faster scans
 - [ ] Better email classification logic
 - [ ] UI improvements and customization
 - [ ] Dark mode

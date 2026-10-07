@@ -81,6 +81,13 @@ function ensureGmailTables() {
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // App settings entered in the UI, such as the user's own Google OAuth credentials
+  db.run(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
   // Messages already judged not job-related, per classifier version, so scans skip them
   db.run(`
     CREATE TABLE IF NOT EXISTS scanned_emails (
@@ -97,6 +104,23 @@ function run(sql, params = []) {
       else resolve({ changes: this.changes });
     });
   });
+}
+
+function getSetting(key) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT value FROM settings WHERE key = ?', [key], (err, row) => {
+      if (err) reject(err);
+      else resolve(row ? row.value : null);
+    });
+  });
+}
+
+function setSetting(key, value) {
+  return run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+}
+
+function deleteSetting(key) {
+  return run('DELETE FROM settings WHERE key = ?', [key]);
 }
 
 function saveRefreshToken(refreshToken) {
@@ -365,6 +389,9 @@ module.exports = {
   deleteJob,
   deleteJobs,
   markEmailProcessed,
+  getSetting,
+  setSetting,
+  deleteSetting,
   saveRefreshToken,
   getRefreshToken,
   clearRefreshToken,

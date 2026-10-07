@@ -7,6 +7,7 @@ const db = require('./db');
 const { createSecurity, splitList } = require('./lib/security');
 const jobsRouter = require('./routes/jobs');
 const gmailRouter = require('./routes/gmail');
+const gmailConfigRouter = require('./routes/gmailConfig');
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Loopback only: the tracker holds personal data, so other machines must not reach it
@@ -27,6 +28,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/jobs', jobsRouter);
+app.use('/api/gmail/config', gmailConfigRouter);
 app.use('/api/gmail', gmailRouter);
 // Test endpoint
 app.get('/api/test', (req, res) => {
@@ -58,7 +60,9 @@ app.use((req, res) => {
 });
 
 function start() {
-  const server = app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, (error) => {
+    // Express 5 also calls this when listening fails; the 'error' handler below reports it
+    if (error) return;
     console.log(`Job Tracker running at http://localhost:${PORT}`);
     if (!hasBuiltClient) {
       console.log('The web app is not built yet. Run "npm run build" (or "npm run dev:client" for development).');

@@ -8,19 +8,12 @@ const { parseFrom, extractJobInfo, classify, htmlToText, cleanBody } = require('
 const { buildSearchQueries } = require('../lib/query');
 const { findMatch, shouldUpdate, collapseByApplication } = require('../lib/match');
 const { classifierVersion } = require('../lib/version');
+const { getGoogleConfig, newOAuthClient } = require('../lib/googleConfig');
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 const FETCH_CONCURRENCY = 8;
 
 const LOCAL_PORT = process.env.PORT || 3000;
-
-function newOAuthClient() {
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI || `http://localhost:${LOCAL_PORT}/api/gmail/auth/callback`
-  );
-}
 
 // One-time values that tie an OAuth callback to the sign-in we started, so a
 // crafted callback link can't connect someone else's Gmail to this tracker
@@ -93,15 +86,23 @@ function extractBody(payload) {
 // ROUTES START HERE
 
 // GET /api/gmail/auth - URL of the Google consent screen
-router.get('/auth', (req, res) => {
-  const authUrl = newOAuthClient().generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-    prompt: 'consent',
-    state: createState()
-  });
+router.get('/auth', async (req, res) => {
+  try {
+    const client = await newOAuthClient();
+    const authUrl = client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+      prompt: 'consent',
+      state: createState()
+    });
 
-  res.json({ authUrl });
+    res.json({ authUrl });
+  } catch (error) {
+    if (error.code === 'not_configured') {
+      return res.status(400).json({ error: error.message, code: 'not_configured' });
+    }
+    res.status(500).json({ error: 'Failed to start sign-in', details: error.message });
+  }
 });
 
 // GET /api/gmail/auth/callback - Google sends the user back here with a code
@@ -116,7 +117,7 @@ router.get('/auth/callback', async (req, res) => {
       return res.status(400).json({ error: 'No authorization code received' });
     }
 
-    const { tokens } = await newOAuthClient().getToken(code);
+    const { tokens } = await (await newOAuthClient()).getToken(code);
 
     // The refresh token lets future scans run without signing in again
     if (tokens.refresh_token) {
@@ -140,8 +141,10 @@ router.get('/auth/callback', async (req, res) => {
 // GET /api/gmail/status - Is a Gmail account connected?
 router.get('/status', async (req, res) => {
   try {
+    const config = await getGoogleConfig();
     res.json({
       message: 'Gmail integration ready',
+      configured: Boolean(config.source),
       connected: Boolean(await db.getRefreshToken())
     });
   } catch (error) {
@@ -170,7 +173,7 @@ router.post('/scan', async (req, res) => {
     }
 
     // Credentials are refreshed automatically from the stored refresh token
-    const auth = newOAuthClient();
+    const auth = await newOAuthClient();
     auth.setCredentials({ refresh_token: refreshToken });
     const authGmail = google.gmail({ version: 'v1', auth });
 
@@ -295,6 +298,10 @@ router.post('/scan', async (req, res) => {
       }
     });
   } catch (error) {
+    if (error.code === 'not_configured') {
+      return res.status(400).json({ error: error.message, code: 'not_configured' });
+    }
+
     console.error('Gmail scan error:', error);
 
     // Revoked or expired (Google expires refresh tokens after 7 days while the

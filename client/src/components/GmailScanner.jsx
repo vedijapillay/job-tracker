@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import GmailSetup from './GmailSetup'
 
 const STATUSES = ['Applied', 'Rejected', 'Interview Scheduled', 'Recruiter Screen', 'Technical Round', 'HM Round', 'Offer', 'Declined by You', 'Ghosted']
 
@@ -9,15 +10,16 @@ export default function GmailScanner({ onJobsDetected }) {
   const [connected, setConnected] = useState(false)
   const [detectedJobs, setDetectedJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
 
   const refreshConnectionStatus = async () => {
     try {
       const res = await fetch('/api/gmail/status')
       const data = await res.json()
       setConnected(Boolean(data.connected))
-      return Boolean(data.connected)
+      return { connected: Boolean(data.connected), configured: Boolean(data.configured) }
     } catch {
-      return false
+      return { connected: false, configured: false }
     }
   }
 
@@ -31,13 +33,21 @@ export default function GmailScanner({ onJobsDetected }) {
     }
   }, [])
 
-  // Scan straight away when already connected, otherwise sign in first
+  // No Google credentials yet: set those up. Already signed in: scan. Otherwise sign in first.
   const handleScanClick = async () => {
-    if (await refreshConnectionStatus()) {
+    const status = await refreshConnectionStatus()
+    if (!status.configured) {
+      setShowSetup(true)
+    } else if (status.connected) {
       scanGmailEmails()
     } else {
       startOAuthFlow()
     }
+  }
+
+  const handleCredentialsChanged = async () => {
+    await refreshConnectionStatus()
+    setNotice('Google credentials updated. Click “Scan Gmail” to sign in.')
   }
 
   const disconnectGmail = async () => {
@@ -59,6 +69,11 @@ export default function GmailScanner({ onJobsDetected }) {
       const res = await fetch('/api/gmail/auth')
       const data = await res.json()
 
+      if (data.code === 'not_configured') {
+        setShowSetup(true)
+        setLoading(false)
+        return
+      }
       if (!data.authUrl) {
         throw new Error('Failed to get auth URL')
       }
@@ -80,6 +95,10 @@ export default function GmailScanner({ onJobsDetected }) {
 
       if (!res.ok) {
         const errData = await res.json()
+        if (errData.code === 'not_configured') {
+          setShowSetup(true)
+          return
+        }
         // Access was revoked or expired: sign in again instead of showing an error
         if (errData.code === 'reauth_required' || errData.code === 'not_connected') {
           setConnected(false)
@@ -206,6 +225,14 @@ export default function GmailScanner({ onJobsDetected }) {
       >
         {loading ? '⏳ Working...' : '🔍 Scan Gmail'}
       </button>
+      {!loading && (
+        <button
+          onClick={() => setShowSetup(true)}
+          className="self-center text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          Gmail setup
+        </button>
+      )}
       {connected && !loading && (
         <button
           onClick={disconnectGmail}
@@ -213,6 +240,10 @@ export default function GmailScanner({ onJobsDetected }) {
         >
           Disconnect Gmail
         </button>
+      )}
+
+      {showSetup && (
+        <GmailSetup onClose={() => setShowSetup(false)} onChanged={handleCredentialsChanged} />
       )}
 
       {/* Error Message */}
