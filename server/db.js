@@ -4,22 +4,40 @@ const path = require('path');
 // Database path
 const DB_PATH = process.env.JOBS_DB_PATH || path.join(__dirname, '../jobs.db');
 
+// Resolves once the schema exists. The server waits for this before it starts
+// listening, so no request can arrive while tables are still being created.
+let resolveReady;
+let rejectReady;
+const ready = new Promise((resolve, reject) => {
+  resolveReady = resolve;
+  rejectReady = reject;
+});
+ready.catch(() => {}); // callers that care handle the failure; this avoids an unhandled rejection
+
 // Initialize database
-const db = new sqlite3.Database(DB_PATH, (err) => {
+const db = new sqlite3.Database(DB_PATH, async (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database at', DB_PATH);
-    initializeSchema();
+    rejectReady(err);
+    return;
+  }
+  console.log('Connected to SQLite database at', DB_PATH);
+  try {
+    await initializeSchema();
+    resolveReady();
+  } catch (schemaError) {
+    console.error('Error initializing database:', schemaError.message);
+    rejectReady(schemaError);
   }
 });
 
 // Enable foreign keys
 db.run('PRAGMA foreign_keys = ON');
 
-// Initialize schema
-function initializeSchema() {
-  db.run(`
+// Create the tables one after another. SQLite runs queued statements in parallel by
+// default, so anything that depends on an earlier statement must wait for it.
+async function initializeSchema() {
+  await run(`
     CREATE TABLE IF NOT EXISTS jobs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       company TEXT NOT NULL,
@@ -33,18 +51,18 @@ function initializeSchema() {
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `, (err) => {
-    if (err) {
-      console.error('Error creating table:', err.message);
-    } else {
-      console.log('Jobs table initialized');
-      ensureEmailIdColumn();
-      ensureGmailTables();
-    }
-  });
+  `);
+  console.log('Jobs table initialized');
 
-  // Gmail messages the user has dismissed or already added, so scans skip them
-  db.run(`
+  // Jobs remember the Gmail message they came from, so deleting a job lets that
+  // email show up in the next scan again
+  const columns = await all('PRAGMA table_info(jobs)');
+  if (!columns.some(col => col.name === 'emailId')) {
+    await run('ALTER TABLE jobs ADD COLUMN emailId TEXT');
+  }
+
+  // Gmail messages the user has dismissed, so scans skip them
+  await run(`
     CREATE TABLE IF NOT EXISTS processed_emails (
       messageId TEXT PRIMARY KEY,
       reason TEXT NOT NULL,
@@ -52,29 +70,12 @@ function initializeSchema() {
       subject TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `, (err) => {
-    if (err) {
-      console.error('Error creating processed_emails table:', err.message);
-    }
-  });
-}
-
-// Jobs remember the Gmail message they came from, so deleting a job lets that
-// email show up in the next scan again
-function ensureEmailIdColumn() {
-  db.all('PRAGMA table_info(jobs)', (err, columns) => {
-    if (err || columns.some(col => col.name === 'emailId')) return;
-    db.run('ALTER TABLE jobs ADD COLUMN emailId TEXT', (alterErr) => {
-      if (alterErr) console.error('Error adding emailId column:', alterErr.message);
-    });
-  });
+  `);
   // Earlier versions recorded added emails here; they are now tracked on the job itself
-  db.run("DELETE FROM processed_emails WHERE reason = 'added'");
-}
+  await run("DELETE FROM processed_emails WHERE reason = 'added'");
 
-function ensureGmailTables() {
   // Single row: the one Gmail account connected to this local tracker
-  db.run(`
+  await run(`
     CREATE TABLE IF NOT EXISTS gmail_auth (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       refreshToken TEXT NOT NULL,
@@ -82,19 +83,25 @@ function ensureGmailTables() {
     )
   `);
   // App settings entered in the UI, such as the user's own Google OAuth credentials
-  db.run(`
+  await run(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )
   `);
   // Messages already judged not job-related, per classifier version, so scans skip them
-  db.run(`
+  await run(`
     CREATE TABLE IF NOT EXISTS scanned_emails (
       messageId TEXT PRIMARY KEY,
       version TEXT NOT NULL
     )
   `);
+}
+
+function all(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
 }
 
 function run(sql, params = []) {
@@ -381,6 +388,7 @@ function closeDb() {
 // Export functions
 module.exports = {
   db,
+  ready,
   insertJob,
   getAllJobs,
   getJobsFiltered,

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const express = require('express');
 require('dotenv').config();
@@ -60,14 +61,7 @@ app.use((req, res) => {
 });
 
 function start() {
-  const server = app.listen(PORT, HOST, (error) => {
-    // Express 5 also calls this when listening fails; the 'error' handler below reports it
-    if (error) return;
-    console.log(`Job Tracker running at http://localhost:${PORT}`);
-    if (!hasBuiltClient) {
-      console.log('The web app is not built yet. Run "npm run build" (or "npm run dev:client" for development).');
-    }
-  });
+  const server = http.createServer(app);
 
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
@@ -75,6 +69,19 @@ function start() {
     } else {
       console.error('Server error:', error.message);
     }
+    process.exit(1);
+  });
+
+  // Only start accepting requests once the database tables exist
+  db.ready.then(() => {
+    server.listen(PORT, HOST, () => {
+      console.log(`Job Tracker running at http://localhost:${PORT}`);
+      if (!hasBuiltClient) {
+        console.log('The web app is not built yet. Run "npm run build" (or "npm run dev:client" for development).');
+      }
+    });
+  }, (error) => {
+    console.error('Could not open the database:', error.message);
     process.exit(1);
   });
 

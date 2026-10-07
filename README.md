@@ -51,6 +51,7 @@ The server only listens on `127.0.0.1`, rejects requests with an unexpected `Hos
 ```bash
 npm run dev          # API with auto-reload on :3000
 npm run dev:client   # web app with hot reload on :5173 (proxies /api to :3000)
+npm test             # run the test suite (temporary database, stubbed Gmail)
 ```
 
 ## How to Use

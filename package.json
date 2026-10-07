@@ -7,7 +7,8 @@
     "build": "npm run build --prefix client",
     "start": "node server/server.js",
     "dev": "nodemon server/server.js",
-    "dev:client": "npm run dev --prefix client"
+    "dev:client": "npm run dev --prefix client",
+    "test": "node --test"
   },
   "keywords": [
     "job-tracker",
