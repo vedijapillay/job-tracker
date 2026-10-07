@@ -16,7 +16,7 @@ const gmailConfigRouter = require('../server/routes/gmailConfig');
 const gmailRouter = require('../server/routes/gmail');
 
 const ID = '123456789012-abcdefghijklmnop.apps.googleusercontent.com';
-const SECRET = 'GOCSPX-superSecretValue12345';
+const SECRET = 'fake-client-secret-for-tests-12345';
 
 // What Google's token endpoint does when the app sends a made-up authorization code
 let tokenBehavior = null;
