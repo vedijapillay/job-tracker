@@ -1,0 +1,167 @@
+/* Job Tracker site: no frameworks, no external fonts, no scripts */
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f5fb;
+  --text: #1f2430;
+  --muted: #5a6172;
+  --border: #e1deee;
+  --accent: #6d28d9;
+  --accent-strong: #5b21b6;
+  --accent-contrast: #ffffff;
+  --code-bg: #f1eff8;
+  --focus: #1d4ed8;
+  --radius: 12px;
+  --max: 62rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14121c;
+    --bg-soft: #1c1928;
+    --text: #ebe9f4;
+    --muted: #a8a4bd;
+    --border: #322d47;
+    --accent: #a78bfa;
+    --accent-strong: #c4b5fd;
+    --accent-contrast: #14121c;
+    --code-bg: #231f33;
+    --focus: #93c5fd;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 1rem/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent-strong); }
+
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  z-index: 10;
+}
+.skip-link:focus { left: 0.5rem; }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }
+
+/* Header */
+.site-header { border-bottom: 1px solid var(--border); }
+.site-header .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.brand { font-weight: 700; font-size: 1.2rem; color: var(--text); text-decoration: none; }
+.brand span { color: var(--accent); }
+.site-nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+.site-nav a { color: var(--text); text-decoration: none; padding: 0.25rem 0; }
+.site-nav a:hover { color: var(--accent); text-decoration: underline; }
+
+/* Hero */
+.hero { background: var(--bg-soft); border-bottom: 1px solid var(--border); padding: 3.5rem 0 3rem; }
+.hero h1 { font-size: clamp(1.9rem, 5vw, 2.9rem); line-height: 1.15; margin: 0 0 1rem; letter-spacing: -0.02em; }
+.hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 40rem; margin: 0 0 1.75rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.button {
+  display: inline-block;
+  padding: 0.7rem 1.3rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid var(--accent);
+}
+.button.primary { background: var(--accent); color: var(--accent-contrast); }
+.button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-contrast); }
+.button.secondary { background: transparent; color: var(--accent); }
+.button.secondary:hover { background: var(--bg); color: var(--accent-strong); }
+.badges { margin: 1.5rem 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; color: var(--muted); font-size: 0.95rem; }
+.badges li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+
+/* Sections */
+section { padding: 3rem 0; }
+section + section { border-top: 1px solid var(--border); }
+h2 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+.section-intro { color: var(--muted); margin: 0 0 1.75rem; max-width: 42rem; }
+
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.2rem; background: var(--bg); }
+.card p { margin: 0; color: var(--muted); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.steps li { counter-increment: step; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem 1rem 3.4rem; position: relative; background: var(--bg); }
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+}
+.steps li p { margin: 0.25rem 0 0; color: var(--muted); }
+
+.notice { border-left: 4px solid var(--accent); background: var(--bg-soft); padding: 1rem 1.2rem; border-radius: 0 var(--radius) var(--radius) 0; }
+.notice p { margin: 0 0 0.6rem; }
+.notice p:last-child { margin-bottom: 0; }
+
+pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+code { background: var(--code-bg); padding: 0.1rem 0.4rem; border-radius: 5px; font-size: 0.92em; }
+pre { background: var(--code-bg); padding: 1rem 1.2rem; border-radius: var(--radius); overflow-x: auto; margin: 0.75rem 0 1.25rem; line-height: 1.5; }
+pre code { background: none; padding: 0; font-size: 0.95rem; }
+
+/* Policy pages */
+.doc { padding: 2.5rem 0 3.5rem; max-width: 46rem; }
+.doc h1 { font-size: clamp(1.8rem, 4.5vw, 2.4rem); line-height: 1.2; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
+.doc .meta { color: var(--muted); margin: 0 0 2rem; }
+.doc h2 { font-size: 1.35rem; margin: 2.2rem 0 0.6rem; }
+.doc ul { padding-left: 1.3rem; }
+.doc li { margin: 0.35rem 0; }
+.doc table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.95rem; }
+.doc th, .doc td { text-align: left; vertical-align: top; padding: 0.6rem 0.75rem; border: 1px solid var(--border); }
+.doc th { background: var(--bg-soft); }
+.table-scroll { overflow-x: auto; }
+
+/* Footer */
+.site-footer { background: var(--bg-soft); border-top: 1px solid var(--border); padding: 2rem 0; color: var(--muted); font-size: 0.93rem; }
+.site-footer .wrap { display: grid; gap: 0.9rem; }
+.site-footer p { margin: 0; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
+
+@media (max-width: 36rem) {
+  .hero { padding: 2.25rem 0 2rem; }
+  section { padding: 2.25rem 0; }
+  .button { width: 100%; text-align: center; }
+}
+
+@media print {
+  .site-header, .hero .actions, .site-footer .footer-links { display: none; }
+  body { color: #000; background: #fff; }
+}

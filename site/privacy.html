@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy | Job Tracker</title>
+  <meta name="description" content="Privacy Policy for Job Tracker, a free open-source app that runs on your own computer. Explains what Gmail data the app reads, how it is used, what is stored, and how to delete it.">
+  <link rel="canonical" href="https://vedijapillay.github.io/privacy.html">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236d28d9'/%3E%3Cpath d='M18 33l9 9 19-21' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">Job <span>Tracker</span></a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/#features">Features</a>
+        <a href="/#get-started">Get started</a>
+        <a href="privacy.html" aria-current="page">Privacy Policy</a>
+        <a href="https://github.com/vedijapillay/job-tracker">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <article class="doc">
+      <h1>Privacy Policy</h1>
+      <p class="meta">Job Tracker &middot; Last updated October 7, 2026</p>
+
+      <p>
+        Job Tracker is a free, open-source application by Vedija Pillay that runs on your own computer to track job
+        applications. This policy explains what information the app handles, particularly if you choose to connect Gmail.
+      </p>
+
+      <h2>In short</h2>
+      <ul>
+        <li>Job Tracker runs on <strong>your computer</strong>. There is no Job Tracker server, account or cloud service.</li>
+        <li>The Gmail connection is <strong>optional</strong>, <strong>read-only</strong>, and used only to find job-application emails for you to review.</li>
+        <li>Email content is processed <strong>on your computer</strong>. The developer never receives it.</li>
+        <li>Your data is <strong>not sold, shared, used for advertising, or used to train AI models</strong>.</li>
+        <li>You can disconnect Gmail and delete everything at any time.</li>
+      </ul>
+
+      <h2>Who is responsible</h2>
+      <p>
+        Job Tracker is an independent open-source project maintained by Vedija Pillay. Because the app runs on your own
+        computer, the information it stores stays under your control. To ask a question, use
+        <a href="https://github.com/vedijapillay/job-tracker/issues">GitHub Issues</a>.
+      </p>
+
+      <h2>Information the app handles</h2>
+
+      <h3>Without Gmail</h3>
+      <p>
+        Only what you type in: for each job, the company, job title, status, source, applied date and optional notes.
+        This is saved in a database file on your computer.
+      </p>
+
+      <h3>If you connect Gmail</h3>
+      <p>
+        You sign in on Google&rsquo;s own sign-in page and approve one permission,
+        <code>https://www.googleapis.com/auth/gmail.readonly</code> (read-only access to Gmail). The app then:
+      </p>
+      <ul>
+        <li>searches your inbox for recent messages (up to the last 180 days, a limited number per scan) that contain job-related words such as &ldquo;application&rdquo;, &ldquo;interview&rdquo; or &ldquo;offer&rdquo;;</li>
+        <li>reads, for each message it checks, the sender, subject, date and message text (it uses roughly the first 1,000 characters of the text);</li>
+        <li>decides on your computer whether the message looks like an application confirmation, interview invitation, offer, rejection or withdrawal, and shows you the result.</li>
+      </ul>
+      <p>The app <strong>cannot send, modify or delete</strong> any email.</p>
+
+      <h2>What is stored on your computer</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Information</th><th scope="col">Why</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>The jobs you add, and for a job created from an email: that email&rsquo;s subject, date and Gmail message ID</td>
+              <td>Shows your tracker, and prevents the same email being suggested again while its job exists</td>
+            </tr>
+            <tr>
+              <td>For emails you dismiss: the message ID, sender and subject</td>
+              <td>So a dismissed email is not shown again</td>
+            </tr>
+            <tr>
+              <td>Message IDs (only) of emails judged not job-related</td>
+              <td>Makes later scans faster</td>
+            </tr>
+            <tr>
+              <td>A Google sign-in token (a &ldquo;refresh token&rdquo;)</td>
+              <td>Lets the app scan again without asking you to sign in each time</td>
+            </tr>
+            <tr>
+              <td>If you entered them in the app: your Google OAuth client ID and secret</td>
+              <td>Needed to sign in to Google</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>The text of your emails is not saved.</strong> It is read in memory during a scan and discarded.
+        Everything above lives in one database file (<code>jobs.db</code>) in the app&rsquo;s folder on your computer.
+      </p>
+
+      <h2>How the information is used</h2>
+      <p>
+        Only to provide the features you can see: finding job-related emails, suggesting tracker entries for you to
+        review, and keeping your tracker up to date. Job Tracker does not use your Google data for advertising,
+        profiling, or to develop, improve or train artificial intelligence or machine learning models.
+      </p>
+
+      <h2>Sharing and third parties</h2>
+      <p>
+        Job Tracker does not send your information to the developer or to any third party, and it contains no
+        analytics, tracking or advertising. The only service the app talks to is Google, to sign you in and read your
+        Gmail, which is governed by <a href="https://policies.google.com/privacy">Google&rsquo;s Privacy Policy</a>.
+        No person at Job Tracker can read your email, because the app runs on your computer and the developer has no
+        access to it.
+      </p>
+
+      <h2>Google API Services User Data Policy</h2>
+      <p>
+        Job Tracker&rsquo;s use and transfer to any other app of information received from Google APIs will adhere to the
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+        including the Limited Use requirements.
+      </p>
+
+      <h2>Keeping, deleting and revoking access</h2>
+      <ul>
+        <li><strong>Delete jobs:</strong> remove one job or many in the app.</li>
+        <li><strong>Disconnect Gmail:</strong> click <em>Disconnect Gmail</em> in the app. This deletes the saved Google sign-in from your computer.</li>
+        <li><strong>Revoke Google access:</strong> remove Job Tracker at any time from your
+          <a href="https://myaccount.google.com/permissions">Google Account permissions</a>.</li>
+        <li><strong>Delete everything:</strong> delete the <code>jobs.db</code> file (or the whole app folder) from your computer.</li>
+      </ul>
+
+      <h2>Security</h2>
+      <p>
+        The app only accepts connections from your own computer and rejects requests from other websites and other
+        devices. Please note that the saved Google sign-in token is stored as plain text inside the database file
+        on your computer, so protect that file the way you protect your other personal files (for example with a
+        device password and disk encryption) and do not share it.
+      </p>
+
+      <h2>Children</h2>
+      <p>Job Tracker is not directed to children under 13 and does not knowingly collect information from them.</p>
+
+      <h2>Changes to this policy</h2>
+      <p>
+        If Job Tracker changes in a way that affects how information is handled, this page will be updated before the
+        change is released, and the date at the top will change. Earlier versions are available in the
+        <a href="https://github.com/vedijapillay/vedijapillay.github.io">history of this site&rsquo;s repository</a>.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy: open an issue at
+        <a href="https://github.com/vedijapillay/job-tracker/issues">github.com/vedijapillay/job-tracker/issues</a>.
+      </p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="/">Home</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="https://github.com/vedijapillay/job-tracker">Source code</a>
+        <a href="https://github.com/vedijapillay/job-tracker/blob/main/LICENSE">MIT License</a>
+      </nav>
+      <p>
+        Job Tracker is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
+        Gmail is a trademark of Google LLC. This site uses no cookies and no analytics.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
