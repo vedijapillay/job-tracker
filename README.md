@@ -114,13 +114,19 @@ Issues or questions? [Open an issue on GitHub](https://github.com/vedijapillay/j
 - [ ] Mobile app (React Native)
 ## Privacy
 
-All job data is stored locally on your machine in `jobs.db`. 
-No data is sent to our servers. Gmail emails are scanned on-demand only.
-Your Gmail credentials are never stored.
+Job Tracker runs on your computer. There is no Job Tracker server, account or cloud service, and the app contains no analytics or tracking.
+
+- Your jobs are stored in `jobs.db` in the app folder, on your machine.
+- Gmail scanning is optional and read-only. Email content is processed on your computer, and **email text is not saved**.
+- To scan without asking you to sign in every time, the app **saves a Google sign-in token** in `jobs.db` (and your Google client ID and secret, if you enter them in the app). Protect that file like your other personal files. **Disconnect Gmail** deletes the token, and you can revoke access any time in your [Google Account permissions](https://myaccount.google.com/permissions).
+- The only outside service the app talks to is Google, to sign you in and read your Gmail.
+
+Read the full [Privacy Policy](https://vedijapillay.github.io/privacy.html).
 
 ## Terms of Service
 
-This project is open source under MIT License. Use at your own risk.
+This project is open source under the MIT License and is provided "as is", without warranty of any kind. Use it at your own risk. It is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
+
 ---
 
 **Built with ❤️ for job seekers everywhere**
