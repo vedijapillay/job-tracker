@@ -47,7 +47,7 @@ before(async () => {
   });
 });
 after(async () => {
-  await app.close();
+  if (app) await app.close();
   await helpers.cleanupTempDb(tempDir, db);
 });
 beforeEach(async () => {

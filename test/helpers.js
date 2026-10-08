@@ -16,20 +16,28 @@ function useTempDb() {
   return dir;
 }
 
-// The schema is created asynchronously after the database opens
-async function waitForSchema(db, timeoutMs = 5000) {
-  const wanted = ['jobs', 'processed_emails', 'gmail_auth', 'settings', 'scanned_emails'];
-  const started = Date.now();
-
-  const query = (sql) => new Promise((resolve, reject) => db.db.all(sql, (err, rows) => (err ? reject(err) : resolve(rows))));
-
-  while (Date.now() - started < timeoutMs) {
-    const tables = (await query("SELECT name FROM sqlite_master WHERE type = 'table'")).map(row => row.name);
-    const columns = tables.includes('jobs') ? (await query('PRAGMA table_info(jobs)')).map(col => col.name) : [];
-    if (wanted.every(name => tables.includes(name)) && columns.includes('emailId')) return;
-    await new Promise(resolve => setTimeout(resolve, 25));
+// The schema is created asynchronously after the database opens. db.ready resolves
+// exactly when that finishes, so wait on it rather than guessing a delay. The limit is
+// generous because shared CI machines can be slow when many test files run at once.
+async function waitForSchema(db, timeoutMs = 60000) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Database schema was not ready within ${timeoutMs / 1000}s`)), timeoutMs);
+  });
+  try {
+    await Promise.race([db.ready, timeout]);
+  } finally {
+    clearTimeout(timer);
   }
-  throw new Error('Database schema was not ready in time');
+
+  // Confirm what the tests rely on really exists
+  const query = (sql) => new Promise((resolve, reject) => db.db.all(sql, (err, rows) => (err ? reject(err) : resolve(rows))));
+  const tables = (await query("SELECT name FROM sqlite_master WHERE type = 'table'")).map(row => row.name);
+  const columns = (await query('PRAGMA table_info(jobs)')).map(col => col.name);
+  for (const name of ['jobs', 'processed_emails', 'gmail_auth', 'settings', 'scanned_emails']) {
+    if (!tables.includes(name)) throw new Error(`Table ${name} is missing after the database was ready`);
+  }
+  if (!columns.includes('emailId')) throw new Error('jobs.emailId is missing after the database was ready');
 }
 
 // Close the database and delete the temp folder; never fail the run over cleanup

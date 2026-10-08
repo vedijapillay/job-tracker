@@ -40,7 +40,7 @@ before(async () => {
   await helpers.waitForSchema(db);
 });
 after(async () => {
-  await new Promise(resolve => server.close(() => resolve()));
+  if (server && server.listening) await new Promise(resolve => server.close(() => resolve()));
   await helpers.cleanupTempDb(tempDir, db);
 });
 

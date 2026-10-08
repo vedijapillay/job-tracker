@@ -91,7 +91,7 @@ before(async () => {
   app = await helpers.startApp(a => a.use('/api/gmail', gmailRouter));
 });
 after(async () => {
-  await app.close();
+  if (app) await app.close();
   await helpers.cleanupTempDb(tempDir, db);
 });
 beforeEach(async () => {
