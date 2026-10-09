@@ -1,128 +1,76 @@
 # Job Tracker
 
-A full-stack application to consolidate job applications from multiple platforms (LinkedIn, Builtin, ZipRecruiter, Jobright, Greenhouse) into one centralized dashboard.
+**Track every job application in one place, privately, on your own computer.**
 
-## Features
+[![CI](https://github.com/vedijapillay/job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/vedijapillay/job-tracker/actions/workflows/ci.yml)
 
-- 📊 **Centralized Dashboard** - Track all job applications in one place
-- 📝 **Manual Entry** - Add jobs with company, title, status, and notes
-- 🔍 **Gmail Scanner** - Auto-detect job rejections and interview invitations from emails
-- 🎯 **Smart Filters** - Filter by status, source, and date range
-- 📥 **CSV Export** - Export your job tracker data anytime
-- 🔐 **Privacy First** - All data stays on your machine (no cloud storage)
-- 💾 **SQLite Database** - Zero setup, user-owned data
+A free, open-source job application tracker. Add jobs by hand, or let an optional, read-only Gmail scan find your application confirmations, interview invitations, offers and rejections and update the tracker for you. There is no account to create and no cloud service: your data stays in one file on your machine.
 
-## Tech Stack
+<!--
+Screenshots: run `npm run demo`, take two screenshots in a full-size browser window, save them as
+docs/images/dashboard.png and docs/images/scan-results.png, then replace this comment with:
 
-- **Backend:** Node.js + Express + SQLite
-- **Frontend:** React + Vite + Tailwind CSS
-- **Email Integration:** Google Gmail API (optional)
+![The job dashboard](docs/images/dashboard.png)
+![Scan results](docs/images/scan-results.png)
+-->
 
-## Installation & Setup
+**Project page:** <https://jobtracker.vedijapillay.dev/> · **Privacy policy:** <https://jobtracker.vedijapillay.dev/privacy.html>
 
-### Prerequisites
-- [Node.js](https://nodejs.org) **20.17 or newer**
+## Try it in 30 seconds
 
-### Quick Start
+You need [Node.js](https://nodejs.org) **20.17 or newer**.
 
 ```bash
 git clone https://github.com/vedijapillay/job-tracker.git
 cd job-tracker
-npm run setup    # installs dependencies and builds the web app
-npm start        # runs everything on one port
-```
-
-Then open **http://localhost:3000**. That's it: the tracker works fully without any Google setup.
-
-### Just looking around? Try the demo
-
-```bash
+npm run setup
 npm run demo
 ```
 
-This starts the app with sample jobs and a **simulated** Gmail scan, so you can try everything (including adding a job from an email) without connecting Google. It uses its own temporary database, ignores your real data, and resets every time you start it. Stop it with Ctrl+C, then run `npm start` for the real app.
+Then open **http://localhost:3000**. The demo has sample jobs and a **simulated** Gmail scan, so you can try everything, including adding a job from an email, without connecting Google. It runs on its own temporary database, never touches your real data, and resets every time you start it. Press Ctrl+C to stop it.
 
-Gmail scanning is optional and needs your own Google credentials; see [Gmail scanning setup](#gmail-scanning-setup-optional) below.
+## What it does
 
-### Gmail scanning setup (optional)
+- **One dashboard** for every application: company, title, status, source and date.
+- **Statuses that match a real job search:** Applied, Recruiter Screen, Technical Round, HM Round, Interview Scheduled, Offer, Rejected, Declined by You, Ghosted.
+- **Filter** by status or source, **delete** one job or many at once, and **export to CSV** whenever you like.
+- **Optional Gmail scan** that finds job emails and suggests changes. You review every suggestion. Nothing is added automatically.
+- **No duplicates:** if an email is about a job you already track, the app offers to move that job forward (for example Applied to Rejected) instead of adding a second row.
+- **Private by design:** no accounts, no analytics, no server run by anyone but you.
 
-Click **Scan Gmail** (or **Gmail setup**) and the app walks you through connecting your inbox. It uses **your own free Google Cloud project**, so nothing is shared with anyone and your emails never leave your computer. You create the project once (about 10 minutes), paste the Client ID and secret into the app, and click **Save and test**.
-
-After creating your Google credentials, publish your Google project (on the consent screen's **Audience** page, click **Publish app**). It's your own personal project, so Google doesn't review it, and it stops Google asking you to sign in again every 7 days, which it does for projects left in "Testing".
-
-The credentials are stored only in your local database. Developers can instead put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in a `.env` file (see `.env.example`); credentials saved in the app take precedence.
-
-### Security
-
-The server only listens on `127.0.0.1`, rejects requests with an unexpected `Host` header, and refuses cross-site requests, so other devices on your network and other websites can't read your jobs or use your Gmail connection.
-
-### For developers
+## Use it for real
 
 ```bash
-npm run dev          # API with auto-reload on :3000
-npm run dev:client   # web app with hot reload on :5173 (proxies /api to :3000)
-npm run demo         # sample data and a simulated Gmail scan, in a separate database
-npm test             # run the test suite (temporary database, stubbed Gmail)
+npm run setup    # once: installs dependencies and builds the web app
+npm start        # runs everything on one port
 ```
 
-## How to Use
+Open **http://localhost:3000**. The tracker works fully without any Google setup. Your jobs are saved in `jobs.db` in the project folder.
 
-### Add Jobs Manually
-1. Click **+ Add Job**
-2. Fill in company name, job title, and other details
-3. Click **Add Job**
+## Gmail scanning (optional)
 
-### Scan Gmail (Optional)
-1. Click **🔍 Scan Gmail**
-2. Authorize access to your Gmail account
-3. The app will scan recent emails and auto-detect:
-   - **Rejections** (no-reply emails with "regret", "not selected", etc.)
-   - **Interview Invitations** (from recruiters mentioning "interview", "next round", etc.)
-4. Review detected jobs and add them to your tracker
+Click **Scan Gmail** (or **Gmail setup**) and the app walks you through connecting your inbox.
 
-### Manage Jobs
-- **Update Status:** Click dropdown to change job status
-- **Filter:** Use filters by status and source
-- **Delete:** Click the red Delete button
-- **Export:** Click **📥 Export CSV** to download all jobs
+**Why you create your own Google project.** Reading email is a sensitive permission, so instead of sharing one project between everyone, you create your own free Google Cloud project once (about 10 minutes), paste its Client ID and secret into the app, and click **Save and test**. Nothing is shared with anyone, and your emails never leave your computer.
 
-## Job Statuses
+**One tip that saves you a weekly chore:** after creating your credentials, open the consent screen's **Audience** page in Google Cloud and click **Publish app**. It's your own personal project, so Google doesn't review it. Without this, Google asks you to sign in again every 7 days. You'll see a "not verified" warning when you sign in; choose **Advanced**, then continue.
 
-- **Applied** - Initial application sent
-- **Recruiter Screen** - Phone/video screening scheduled
-- **Technical Round** - Coding interview or technical assessment
-- **HM Round** - Hiring manager interview
-- **Interview Scheduled** - Auto-detected from Gmail
-- **Offer** - Offer received
-- **Rejected** - Auto-detected from Gmail or marked manually
-- **Declined by You** - You declined the opportunity
-- **Ghosted** - No response from company
+Developers can put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in a `.env` file instead (see [`.env.example`](.env.example)). Credentials saved in the app take precedence.
 
-## Database
+### What the scan does
 
-Job data is stored in `jobs.db` (SQLite) in the project root. This file:
-- Is created automatically on first run
-- Stays on your computer (never uploaded anywhere)
-- Can be backed up or shared with others
+- Reads recent **inbox** emails (up to the last 180 days) that mention job-related words. It skips Gmail's Promotions and Social tabs, except for mail from known job sites and application systems.
+- Decides on your computer whether each email is an **application confirmation, interview or screening, assessment, offer, rejection or withdrawal**, and picks out the company and job title when it can.
+- Shows you the results. For each one you can **add it**, **update an existing job**, **edit it first**, or click **Not a job email** so it never shows up again.
+- **Never** sends, changes or deletes email. The permission it asks for is read-only.
 
-## Contributing
+### Limits you should know about
 
-Want to improve Job Tracker? Check out [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- The classifier is **rule-based, not AI**. It works on English-language emails and will sometimes miss one or get one wrong, which is why you review every result.
+- A recruiter writing from a personal address (Gmail, Outlook and so on) may show up with the company "Unknown". Fill it in before adding.
+- It reads the inbox only, and only Gmail is supported today.
+- Automated tests run on Linux and Windows for every change. The real Gmail sign-in has so far been tried by hand mostly on macOS, so tell us if something breaks elsewhere.
 
-## License
-
-This project is open source under the MIT License. See [LICENSE](LICENSE) file for details.
-
-## Support
-
-Issues or questions? [Open an issue on GitHub](https://github.com/vedijapillay/job-tracker/issues)
-
-## Roadmap
-
-- [ ] Better email classification logic
-- [ ] UI improvements and customization
-- [ ] Dark mode
-- [ ] Mobile app (React Native)
 ## Privacy
 
 Job Tracker runs on your computer. There is no Job Tracker server, account or cloud service, and the app contains no analytics or tracking.
@@ -131,13 +79,50 @@ Job Tracker runs on your computer. There is no Job Tracker server, account or cl
 - Gmail scanning is optional and read-only. Email content is processed on your computer, and **email text is not saved**.
 - To scan without asking you to sign in every time, the app **saves a Google sign-in token** in `jobs.db` (and your Google client ID and secret, if you enter them in the app). Protect that file like your other personal files. **Disconnect Gmail** deletes the token, and you can revoke access any time in your [Google Account permissions](https://myaccount.google.com/permissions).
 - The only outside service the app talks to is Google, to sign you in and read your Gmail.
+- The server only listens on `127.0.0.1`, rejects requests with an unexpected `Host` header, and refuses cross-site requests, so other devices on your network and other websites can't read your jobs or use your Gmail connection.
 
 Read the full [Privacy Policy](https://jobtracker.vedijapillay.dev/privacy.html).
 
-## Terms of Service
+## Your data
 
-This project is open source under the MIT License and is provided "as is", without warranty of any kind. Use it at your own risk. It is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
+Everything is in one SQLite file, `jobs.db`, created on first run.
 
----
+- **Back it up:** copy the file. **Move it:** set `JOBS_DB_PATH` (see [`.env.example`](.env.example)).
+- **Delete everything:** stop the app and delete `jobs.db`.
+- **Export:** the **Export CSV** button downloads your jobs as a spreadsheet.
 
-**Built with ❤️ for job seekers everywhere**
+## Troubleshooting
+
+| Problem | What to do |
+|---|---|
+| **"Port 3000 is already in use"** | Stop the other program, or use another port by adding `PORT=3001` to a `.env` file (see [`.env.example`](.env.example)) and running `npm start` again. If you use Gmail scanning, add the new redirect address (`http://localhost:3001/api/gmail/auth/callback`) in Google Cloud. |
+| **`npm run setup` fails on `sqlite3`** | Check `node -v` shows 20.17 or newer. The database engine downloads a prebuilt file for most computers; on unusual ones it needs a C++ build toolchain. |
+| **Google says the app isn't verified** | Expected for your own project. Choose **Advanced**, then continue. |
+| **Google keeps asking me to sign in again** | Your Google project is probably still in "Testing". Publish it (see the Gmail tip above). Google may also ask again if you change your Google password. |
+| **The scan finds nothing** | It looks at the inbox for the last 180 days, in English, and skips emails you've already added or dismissed. Try `npm run demo` to see what a result looks like, and [open an issue](https://github.com/vedijapillay/job-tracker/issues) with the sender and subject (no private content) if a real email was missed. |
+
+## Development
+
+```bash
+npm run dev          # API with auto-reload on :3000
+npm run dev:client   # web app with hot reload on :5173 (proxies /api to :3000)
+npm run demo         # sample data and a simulated Gmail scan, in a separate database
+npm test             # the test suite (temporary database, stubbed Gmail, no network)
+```
+
+When you run the web app separately for development, set `FRONTEND_URL=http://localhost:5173` so Google's sign-in returns to the right place. Built with Node.js, Express and SQLite on the server, and React, Vite and Tailwind CSS in the browser. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to help.
+
+Installing reports some warnings from build tools (Vite and Tailwind) in the web app's dependencies. They affect only the development server, not the app you run, and the server's own dependencies audited clean when this was written.
+
+## Roadmap
+
+- One-click Google sign-in without creating your own Google project (needs Google's approval, which is in progress)
+- More mail providers, such as Outlook or any IMAP inbox
+- Better classification, based on the emails people report as missed or wrong
+- Optional AI-assisted classification, only if people ask for it
+
+## License and disclaimer
+
+Open source under the [MIT License](LICENSE). Provided "as is", without warranty of any kind; use it at your own risk. Job Tracker is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
+
+Questions or problems? [Open an issue](https://github.com/vedijapillay/job-tracker/issues).
