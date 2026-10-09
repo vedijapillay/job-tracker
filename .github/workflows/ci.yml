@@ -34,3 +34,29 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  # The README's first command is `npm run setup`. npm hands its settings to the commands it
+  # runs, so a user-level `allow-scripts` setting used to break it. CI has no such setting,
+  # so this job supplies one to reproduce that situation.
+  setup-script:
+    name: npm run setup on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run the setup command from the README
+        run: npm run setup
+        env:
+          npm_config_allow_scripts: some-package
+
+      - name: Check the web app was built
+        run: node -e "require('fs').accessSync('client/dist/index.html'); console.log('client/dist/index.html exists')"
