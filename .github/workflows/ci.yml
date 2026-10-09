@@ -22,10 +22,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      # npm ci installs exactly what the lockfiles say, and fails if they are out of date
       - name: Install dependencies
         run: |
-          npm install
-          npm install --prefix client
+          npm ci
+          npm ci --prefix client
 
       # The server test also checks that the built web app is served
       - name: Build the web app

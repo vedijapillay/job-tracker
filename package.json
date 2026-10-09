@@ -7,7 +7,7 @@
     "build": "npm run build --prefix client",
     "start": "node server/server.js",
     "demo": "node server/demo.js",
-    "dev": "nodemon server/server.js",
+    "dev": "node --watch server/server.js",
     "dev:client": "npm run dev --prefix client",
     "test": "node --test"
   },
@@ -27,14 +27,15 @@
     "googleapis": "^182.0.0",
     "sqlite3": "^6.0.1"
   },
-  "devDependencies": {
-    "nodemon": "^2.0.20"
-  },
   "engines": {
     "node": ">=20.17.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/vedijapillay/job-tracker.git"
+  },
+  "allowScripts": {
+    "sqlite3@6.0.1": true,
+    "fsevents@2.3.3": false
   }
 }
