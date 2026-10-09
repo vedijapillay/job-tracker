@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { DEMO_MODE } = require('../lib/demoConfig');
 const { CLIENT_ID_KEY, CLIENT_SECRET_KEY, getGoogleConfig, newOAuthClient } = require('../lib/googleConfig');
 
 const CLIENT_ID_PATTERN = /^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
@@ -18,6 +19,14 @@ function describe(config) {
     redirectUri: config.redirectUri
   };
 }
+
+// Saving or testing Google credentials makes no sense in demo mode
+router.use((req, res, next) => {
+  if (DEMO_MODE && req.method !== 'GET') {
+    return res.status(403).json({ error: 'Not available in demo mode.', code: 'demo_mode' });
+  }
+  next();
+});
 
 // GET /api/gmail/config
 router.get('/', async (req, res) => {

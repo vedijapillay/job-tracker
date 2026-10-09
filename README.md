@@ -34,6 +34,14 @@ npm start        # runs everything on one port
 
 Then open **http://localhost:3000**. That's it: the tracker works fully without any Google setup.
 
+### Just looking around? Try the demo
+
+```bash
+npm run demo
+```
+
+This starts the app with sample jobs and a **simulated** Gmail scan, so you can try everything (including adding a job from an email) without connecting Google. It uses its own temporary database, ignores your real data, and resets every time you start it. Stop it with Ctrl+C, then run `npm start` for the real app.
+
 Gmail scanning is optional and needs your own Google credentials; see [Gmail scanning setup](#gmail-scanning-setup-optional) below.
 
 ### Gmail scanning setup (optional)
@@ -51,6 +59,7 @@ The server only listens on `127.0.0.1`, rejects requests with an unexpected `Hos
 ```bash
 npm run dev          # API with auto-reload on :3000
 npm run dev:client   # web app with hot reload on :5173 (proxies /api to :3000)
+npm run demo         # sample data and a simulated Gmail scan, in a separate database
 npm test             # run the test suite (temporary database, stubbed Gmail)
 ```
 

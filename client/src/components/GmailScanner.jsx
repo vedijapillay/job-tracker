@@ -8,6 +8,7 @@ export default function GmailScanner({ onJobsDetected }) {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const [connected, setConnected] = useState(false)
+  const [demo, setDemo] = useState(false) // `npm run demo`: simulated mailbox, no Google
   const [detectedJobs, setDetectedJobs] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
@@ -17,6 +18,7 @@ export default function GmailScanner({ onJobsDetected }) {
       const res = await fetch('/api/gmail/status')
       const data = await res.json()
       setConnected(Boolean(data.connected))
+      setDemo(Boolean(data.demo))
       return { connected: Boolean(data.connected), configured: Boolean(data.configured) }
     } catch {
       return { connected: false, configured: false }
@@ -223,9 +225,9 @@ export default function GmailScanner({ onJobsDetected }) {
         disabled={loading}
         className="bg-purple-600 text-white px-6 py-2 rounded font-semibold hover:bg-purple-700 disabled:bg-gray-400"
       >
-        {loading ? '⏳ Working...' : '🔍 Scan Gmail'}
+        {loading ? '⏳ Working...' : demo ? '🔍 Scan Gmail (simulated)' : '🔍 Scan Gmail'}
       </button>
-      {!loading && (
+      {!loading && !demo && (
         <button
           onClick={() => setShowSetup(true)}
           className="self-center text-sm text-gray-500 underline hover:text-gray-700"
@@ -233,7 +235,7 @@ export default function GmailScanner({ onJobsDetected }) {
           Gmail setup
         </button>
       )}
-      {connected && !loading && (
+      {connected && !loading && !demo && (
         <button
           onClick={disconnectGmail}
           className="self-center text-sm text-gray-500 underline hover:text-gray-700"
@@ -289,6 +291,7 @@ export default function GmailScanner({ onJobsDetected }) {
               </div>
               <p className="text-purple-100 mt-2">
                 {detectedJobs.length} job(s) found in your emails. Add them to your tracker.
+                {demo && ' Demo: these are sample emails, not from a real mailbox.'}
               </p>
             </div>
 

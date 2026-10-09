@@ -1,8 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
+const { DEMO_MODE, demoDbPath } = require('./lib/demoConfig');
 
 // Database path
-const DB_PATH = process.env.JOBS_DB_PATH || path.join(__dirname, '../jobs.db');
+const REAL_DB_PATH = path.join(__dirname, '../jobs.db');
+const DB_PATH = DEMO_MODE ? demoDbPath() : (process.env.JOBS_DB_PATH || REAL_DB_PATH);
+
+if (DEMO_MODE) {
+  // Demo data is reset on every start, so it must never share a file with real data
+  if (path.resolve(DB_PATH) === path.resolve(REAL_DB_PATH)) {
+    throw new Error('Demo mode will not use the real jobs.db. Unset DEMO_DB_PATH or choose another file.');
+  }
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+}
 
 // Resolves once the schema exists. The server waits for this before it starts
 // listening, so no request can arrive while tables are still being created.
@@ -389,6 +400,7 @@ function closeDb() {
 module.exports = {
   db,
   ready,
+  DB_PATH,
   insertJob,
   getAllJobs,
   getJobsFiltered,

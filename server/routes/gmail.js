@@ -9,6 +9,8 @@ const { buildSearchQueries } = require('../lib/query');
 const { findMatch, shouldUpdate, collapseByApplication } = require('../lib/match');
 const { classifierVersion } = require('../lib/version');
 const { getGoogleConfig, newOAuthClient } = require('../lib/googleConfig');
+const { DEMO_MODE } = require('../lib/demoConfig');
+const { createDemoGmail } = require('../lib/demo');
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 const FETCH_CONCURRENCY = 8;
@@ -83,10 +85,16 @@ function extractBody(payload) {
   return html ? htmlToText(html) : '';
 }
 
+// Anything that talks to Google is switched off in demo mode
+function blockInDemo(req, res, next) {
+  if (!DEMO_MODE) return next();
+  res.status(403).json({ error: 'Not available in demo mode.', code: 'demo_mode' });
+}
+
 // ROUTES START HERE
 
 // GET /api/gmail/auth - URL of the Google consent screen
-router.get('/auth', async (req, res) => {
+router.get('/auth', blockInDemo, async (req, res) => {
   try {
     const client = await newOAuthClient();
     const authUrl = client.generateAuthUrl({
@@ -106,7 +114,7 @@ router.get('/auth', async (req, res) => {
 });
 
 // GET /api/gmail/auth/callback - Google sends the user back here with a code
-router.get('/auth/callback', async (req, res) => {
+router.get('/auth/callback', blockInDemo, async (req, res) => {
   try {
     const { code, state } = req.query;
 
@@ -141,6 +149,9 @@ router.get('/auth/callback', async (req, res) => {
 // GET /api/gmail/status - Is a Gmail account connected?
 router.get('/status', async (req, res) => {
   try {
+    if (DEMO_MODE) {
+      return res.json({ message: 'Gmail integration ready', configured: true, connected: true, demo: true });
+    }
     const config = await getGoogleConfig();
     res.json({
       message: 'Gmail integration ready',
@@ -153,7 +164,7 @@ router.get('/status', async (req, res) => {
 });
 
 // POST /api/gmail/disconnect - Forget the stored Google credentials
-router.post('/disconnect', async (req, res) => {
+router.post('/disconnect', blockInDemo, async (req, res) => {
   try {
     await db.clearRefreshToken();
     res.json({ message: 'Gmail disconnected' });
@@ -167,15 +178,21 @@ router.post('/scan', async (req, res) => {
   const startedAt = Date.now();
 
   try {
-    const refreshToken = await db.getRefreshToken();
-    if (!refreshToken) {
-      return res.status(401).json({ error: 'Gmail is not connected.', code: 'not_connected' });
-    }
+    let authGmail;
+    if (DEMO_MODE) {
+      // A simulated mailbox: the rest of the scan runs exactly as it does with real Gmail
+      authGmail = createDemoGmail();
+    } else {
+      const refreshToken = await db.getRefreshToken();
+      if (!refreshToken) {
+        return res.status(401).json({ error: 'Gmail is not connected.', code: 'not_connected' });
+      }
 
-    // Credentials are refreshed automatically from the stored refresh token
-    const auth = await newOAuthClient();
-    auth.setCredentials({ refresh_token: refreshToken });
-    const authGmail = google.gmail({ version: 'v1', auth });
+      // Credentials are refreshed automatically from the stored refresh token
+      const auth = await newOAuthClient();
+      auth.setCredentials({ refresh_token: refreshToken });
+      authGmail = google.gmail({ version: 'v1', auth });
+    }
 
     // Run each search and merge, keeping one entry per message
     const seen = new Set();

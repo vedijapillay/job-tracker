@@ -11,6 +11,9 @@ For development with live reload, run `npm run dev` (API on :3000) and `npm run 
 
 Gmail scanning needs Google credentials. Click **Scan Gmail** in the app for a guided setup, or put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in a `.env` file (see `.env.example`).
 
+## Demo mode
+`npm run demo` runs the app on invented sample data with a simulated Gmail (`server/lib/demo.js`). It always uses its own database and never the real `jobs.db`. If you change how emails are classified, `test/demo.test.js` checks that the demo still shows sensible results.
+
 ## Tests
 ```bash
 npm test
@@ -25,7 +28,6 @@ Tests live in `test/` and use Node's built-in test runner. They run against a te
 ## What to Work On
 - Better classification for emails the app misses or gets wrong (open an issue with the sender and subject, without private content)
 - Support for more mail providers
-- A sample-data mode for trying the app without Gmail
 - UI improvements
 
 ## Before Submitting

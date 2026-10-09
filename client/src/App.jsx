@@ -8,6 +8,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [pendingDelete, setPendingDelete] = useState(null) // { ids, message }
+  const [demo, setDemo] = useState(false) // running `npm run demo`
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState('')
@@ -21,6 +22,14 @@ export default function App() {
     status: 'Applied',
     source: ''
   })
+
+  // Is this the demo (sample data), or the real app?
+  useEffect(() => {
+    fetch('/api/gmail/status')
+      .then(res => res.json())
+      .then(data => setDemo(Boolean(data.demo)))
+      .catch(() => {})
+  }, [])
 
   // Fetch jobs on mount
   useEffect(() => {
@@ -172,6 +181,15 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
+        {/* Demo mode banner */}
+        {demo && (
+          <div role="status" className="mb-6 p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded">
+            <strong>Demo mode.</strong> This is sample data in a separate database, so your real tracker is not touched.
+            Try <strong>Scan Gmail</strong> to see a simulated scan. To use the real app, stop this with Ctrl+C
+            and run <code className="bg-amber-100 px-1 rounded">npm start</code>.
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Tracker</h1>
@@ -314,7 +332,15 @@ export default function App() {
           {loading ? (
             <div className="p-8 text-center text-gray-600">Loading jobs...</div>
           ) : jobs.length === 0 ? (
-            <div className="p-8 text-center text-gray-600">No jobs found. Add one to get started!</div>
+            <div className="p-8 text-center text-gray-600">
+              <p>No jobs found. Add one to get started!</p>
+              {!demo && !filterStatus && !filterSource && (
+                <p className="mt-2 text-sm">
+                  Just looking around? Run <code className="bg-gray-100 px-1 rounded">npm run demo</code> in a
+                  terminal to try the app with sample data.
+                </p>
+              )}
+            </div>
           ) : (
             <table className="w-full">
               <thead>

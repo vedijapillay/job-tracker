@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const { createSecurity, splitList } = require('./lib/security');
+const { DEMO_MODE } = require('./lib/demoConfig');
 const jobsRouter = require('./routes/jobs');
 const gmailRouter = require('./routes/gmail');
 const gmailConfigRouter = require('./routes/gmailConfig');
@@ -72,16 +73,21 @@ function start() {
     process.exit(1);
   });
 
-  // Only start accepting requests once the database tables exist
-  db.ready.then(() => {
+  // Only start accepting requests once the database tables exist (and, in demo mode, the sample data)
+  db.ready.then(async () => {
+    if (DEMO_MODE) {
+      const count = await require('./lib/demo').seedDemoData();
+      console.log(`DEMO MODE: loaded ${count} sample jobs into a separate database (${db.DB_PATH}).`);
+      console.log('Your real data is not used. Press Ctrl+C, then run "npm start" for the real app.');
+    }
     server.listen(PORT, HOST, () => {
       console.log(`Job Tracker running at http://localhost:${PORT}`);
       if (!hasBuiltClient) {
         console.log('The web app is not built yet. Run "npm run build" (or "npm run dev:client" for development).');
       }
     });
-  }, (error) => {
-    console.error('Could not open the database:', error.message);
+  }).catch((error) => {
+    console.error('Could not start:', error.message);
     process.exit(1);
   });
 

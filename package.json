@@ -6,6 +6,7 @@
     "setup": "npm install && npm install --prefix client && npm run build --prefix client",
     "build": "npm run build --prefix client",
     "start": "node server/server.js",
+    "demo": "node server/demo.js",
     "dev": "nodemon server/server.js",
     "dev:client": "npm run dev --prefix client",
     "test": "node --test"
