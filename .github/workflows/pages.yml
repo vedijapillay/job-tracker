@@ -1,6 +1,6 @@
 name: Deploy site
 
-# Publishes the site/ folder to https://vedijapillay.github.io/job-tracker/
+# Publishes the site/ folder to https://jobtracker.vedijapillay.dev/
 # GitHub Pages must be set to "GitHub Actions" as its source (Settings > Pages).
 
 on:

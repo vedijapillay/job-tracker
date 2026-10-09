@@ -130,7 +130,7 @@ Job Tracker runs on your computer. There is no Job Tracker server, account or cl
 - To scan without asking you to sign in every time, the app **saves a Google sign-in token** in `jobs.db` (and your Google client ID and secret, if you enter them in the app). Protect that file like your other personal files. **Disconnect Gmail** deletes the token, and you can revoke access any time in your [Google Account permissions](https://myaccount.google.com/permissions).
 - The only outside service the app talks to is Google, to sign you in and read your Gmail.
 
-Read the full [Privacy Policy](https://vedijapillay.github.io/job-tracker/privacy.html).
+Read the full [Privacy Policy](https://jobtracker.vedijapillay.dev/privacy.html).
 
 ## Terms of Service
 
