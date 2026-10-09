@@ -99,7 +99,7 @@ Everything is in one SQLite file, `jobs.db`, created on first run.
 | **`npm run setup` fails on `sqlite3`** | Check `node -v` shows 20.17 or newer. The database engine downloads a prebuilt file for most computers; on unusual ones it needs a C++ build toolchain. |
 | **Google says the app isn't verified** | Expected for your own project. Choose **Advanced**, then continue. |
 | **Google keeps asking me to sign in again** | Your Google project is probably still in "Testing". Publish it (see the Gmail tip above). Google may also ask again if you change your Google password. |
-| **The scan finds nothing** | It looks at the inbox for the last 180 days, in English, and skips emails you've already added or dismissed. Try `npm run demo` to see what a result looks like, and [open an issue](https://github.com/vedijapillay/job-tracker/issues) with the sender and subject (no private content) if a real email was missed. |
+| **The scan finds nothing** | It looks at the inbox for the last 180 days, in English, and skips emails you've already added or dismissed. Try `npm run demo` to see what a result looks like, and report it with the [Missed or wrong email form](https://github.com/vedijapillay/job-tracker/issues/new?template=missed_email.yml), which only asks for the sender's domain and the subject (no private content), if a real email was missed. |
 
 ## Development
 
@@ -125,4 +125,4 @@ Installing reports some warnings from build tools (Vite and Tailwind) in the web
 
 Open source under the [MIT License](LICENSE). Provided "as is", without warranty of any kind; use it at your own risk. Job Tracker is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
 
-Questions or problems? [Open an issue](https://github.com/vedijapillay/job-tracker/issues).
+Questions or problems? [Open an issue](https://github.com/vedijapillay/job-tracker/issues/new/choose). Found a **security problem**? Please report it privately; see [SECURITY.md](SECURITY.md).

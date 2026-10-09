@@ -30,6 +30,10 @@ Tests live in `test/` and use Node's built-in test runner. They run against a te
 - Support for more mail providers
 - UI improvements
 
+## Reporting problems
+- Missed or wrongly labelled email? Use the **Missed or wrong email** issue form. It asks only for the sender's domain and the subject, never email content.
+- Found a security problem? Don't open a public issue; see [SECURITY.md](SECURITY.md).
+
 ## Before Submitting
 - Run `npm test`
 - No breaking changes
