@@ -150,7 +150,7 @@ export default function GmailSetup({ onClose, onChanged }) {
             </li>
             <li>
               Set up the <ExternalLink href={LINKS.consent}>OAuth consent screen</ExternalLink>: choose <strong>External</strong>, fill in an app name and your email,
-              and add <strong>your own Gmail address under “Test users”</strong>. If asked for scopes, add the read-only Gmail scope
+              and add <strong>your own Gmail address under “Test users”</strong> (needed until you publish in the step below). If asked for scopes, add the read-only Gmail scope
               (<code className="bg-gray-100 px-1 rounded">gmail.readonly</code>).
             </li>
             <li>
@@ -169,6 +169,11 @@ export default function GmailSetup({ onClose, onChanged }) {
                 </div>
               )}
             </li>
+            <li>
+              <strong>Recommended:</strong> on the consent screen’s <strong>Audience</strong> page, click <strong>Publish app</strong> to move it
+              from “Testing” to “In production”. It is your own personal project, so Google does not review it, and it avoids
+              the weekly sign-in described below. You will still see the “not verified” warning when you sign in.
+            </li>
             <li>Copy the <strong>Client ID</strong> and <strong>Client secret</strong> Google shows you, and paste them below.</li>
           </ol>
 
@@ -176,7 +181,8 @@ export default function GmailSetup({ onClose, onChanged }) {
             <p><strong>Good to know</strong></p>
             <ul className="list-disc pl-5 space-y-1">
               <li>The first time you sign in, Google says the app is “not verified”. That is expected for your own project: choose <em>Advanced</em>, then continue to your app.</li>
-              <li>While your project is in “Testing” mode, Google asks you to sign in again about every 7 days (their rule at the time of writing).</li>
+              <li>Google’s rule: while a project is in “Testing”, its sign-in expires after 7 days, so you would have to sign in again every week. Publishing it (the recommended step above) avoids that. If you connected before publishing, click <em>Disconnect Gmail</em> and scan again so Google issues a fresh sign-in.</li>
+              <li>You may also be asked to sign in again if you change your Google password, or if you don’t scan for about six months. Those are Google’s rules too.</li>
               <li>Google renames things in its console now and then, so the labels above may differ slightly.</li>
             </ul>
           </div>

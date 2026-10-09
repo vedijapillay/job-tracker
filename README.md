@@ -48,6 +48,8 @@ Gmail scanning is optional and needs your own Google credentials; see [Gmail sca
 
 Click **Scan Gmail** (or **Gmail setup**) and the app walks you through connecting your inbox. It uses **your own free Google Cloud project**, so nothing is shared with anyone and your emails never leave your computer. You create the project once (about 10 minutes), paste the Client ID and secret into the app, and click **Save and test**.
 
+After creating your Google credentials, publish your Google project (on the consent screen's **Audience** page, click **Publish app**). It's your own personal project, so Google doesn't review it, and it stops Google asking you to sign in again every 7 days, which it does for projects left in "Testing".
+
 The credentials are stored only in your local database. Developers can instead put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in a `.env` file (see `.env.example`); credentials saved in the app take precedence.
 
 ### Security
