@@ -26,6 +26,7 @@ const demo = require('../server/lib/demo');
 const jobsRouter = require('../server/routes/jobs');
 const gmailRouter = require('../server/routes/gmail');
 const gmailConfigRouter = require('../server/routes/gmailConfig');
+const insightsRouter = require('../server/routes/insights');
 
 let app;
 const call = async (method, urlPath, body) => {
@@ -43,6 +44,7 @@ before(async () => {
   await demo.seedDemoData();
   app = await helpers.startApp(a => {
     a.use('/api/jobs', jobsRouter);
+    a.use('/api/insights', insightsRouter);
     a.use('/api/gmail/config', gmailConfigRouter);
     a.use('/api/gmail', gmailRouter);
   });
@@ -127,13 +129,62 @@ describe('sample data', () => {
             await db.ready;
             try { await demo.seedDemoData(); console.log('RESULT wiped'); }
             catch (e) { console.log('RESULT refused: ' + e.message); }
-            db.db.get('SELECT count(*) AS n FROM jobs', (err, row) => { console.log('JOBS ' + row.n); process.exit(0); });
+            db.db.get('SELECT count(*) AS n FROM jobs', (err, row) => {
+              console.log('JOBS ' + row.n);
+              db.db.get("SELECT count(*) AS n FROM sqlite_master WHERE name = 'demo_marker'", (e2, r2) => { console.log('MARKER_TABLES ' + r2.n); process.exit(0); });
+            });
           });
         });
       });`;
     const r = await runScript(script, { DEMO_MODE: '1', DEMO_DB_PATH: realish, JOBS_DB_PATH: '' });
     assert.match(r.out, /RESULT refused: Refusing to reset .* is not a demo database/);
     assert.match(r.out, /JOBS 1/, 'the existing job must still be there');
+    assert.match(r.out, /MARKER_TABLES 0/, 'a refused reset must not leave a demo marker behind');
+  });
+});
+
+describe('the sample data tells a story in the Insights tab', () => {
+  const insights = async () => (await call('GET', '/api/insights')).body;
+  before(async () => { await demo.seedDemoData(); });
+
+  it('has enough jobs for the charts to mean something', async () => {
+    const body = await insights();
+    assert.equal(body.total, demo.sampleJobs().length);
+    assert.ok(body.total >= 15);
+    assert.equal(body.smallSample, false);
+  });
+
+  it('shows a funnel that narrows at every step, with an offer at the end', async () => {
+    const { funnel } = await insights();
+    const counts = funnel.map(step => step.count);
+    assert.ok(counts[0] > counts[1] && counts[1] > counts[2] && counts[2] > counts[3], counts.join(' > '));
+    assert.ok(counts[3] >= 1);
+  });
+
+  it('counts rejected jobs that got as far as an interview, which needs the furthest stage', async () => {
+    const { funnel, outcomes } = await insights();
+    const rejected = outcomes.find(o => o.key === 'rejected').count;
+    const reachedInterview = funnel[1].count;
+    const interviewingNow = demo.sampleJobs().filter(j => ['Recruiter Screen', 'Interview Scheduled', 'Technical Round', 'HM Round', 'Offer'].includes(j.status)).length;
+    assert.ok(reachedInterview > interviewingNow, 'rejected and declined jobs must still count as having reached an interview');
+    assert.ok(rejected >= 1);
+  });
+
+  it('uses all five outcomes and several sources', async () => {
+    const { outcomes, sources } = await insights();
+    assert.ok(outcomes.filter(o => o.count > 0).length >= 4, outcomes.map(o => `${o.key}:${o.count}`).join(' '));
+    assert.ok(sources.length >= 4);
+  });
+
+  it('spreads applications over several weeks', async () => {
+    const { weekly } = await insights();
+    assert.ok(weekly.filter(w => w.count > 0).length >= 7);
+  });
+
+  it('has something to point out', async () => {
+    const { highlights } = await insights();
+    assert.ok(highlights.length >= 2, highlights.join(' | '));
+    assert.ok(highlights.some(h => /no reply for over 3 weeks/.test(h)));
   });
 });
 

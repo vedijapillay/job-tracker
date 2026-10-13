@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import GmailScanner from './components/GmailScanner'
+import Insights from './components/Insights'
 
 export default function App() {
   const [jobs, setJobs] = useState([])
@@ -9,6 +10,14 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([])
   const [pendingDelete, setPendingDelete] = useState(null) // { ids, message }
   const [demo, setDemo] = useState(false) // running `npm run demo`
+  // Tracker (the list) or Insights (charts). A #insights link opens the charts directly.
+  const [view, setView] = useState(() => (window.location.hash === '#insights' ? 'insights' : 'tracker'))
+
+  const switchView = (next) => {
+    setView(next)
+    // Keep the address in step without adding history entries; leaves other hashes (the Google sign-in return) alone
+    window.history.replaceState(null, '', next === 'insights' ? '#insights' : window.location.pathname + window.location.search)
+  }
 
   // Filter state
   const [filterStatus, setFilterStatus] = useState('')
@@ -195,6 +204,33 @@ export default function App() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Tracker</h1>
           <p className="text-gray-600">Track all your job applications in one place</p>
         </div>
+
+        {/* Tracker / Insights switch */}
+        <div role="tablist" aria-label="Views" className="mb-6 flex gap-1 border-b border-gray-300">
+          {[['tracker', 'Tracker'], ['insights', 'Insights']].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={view === id}
+              aria-controls={`panel-${id}`}
+              onClick={() => switchView(id)}
+              className={`-mb-px border-b-2 px-4 py-2 font-semibold ${view === id ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'insights' && (
+          <div role="tabpanel" id="panel-insights" aria-labelledby="tab-insights">
+            <Insights />
+          </div>
+        )}
+
+        {/* The tracker stays mounted while Insights is shown, so an open scan window or form is not lost */}
+        <div role="tabpanel" id="panel-tracker" aria-labelledby="tab-tracker" className={view === 'tracker' ? '' : 'hidden'}>
 
         {/* Error Alert */}
         {error && (
@@ -433,6 +469,7 @@ export default function App() {
             Interviews: {jobs.filter(j => j.status === 'Interview Scheduled').length}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

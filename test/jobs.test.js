@@ -135,6 +135,50 @@ describe('deleting jobs', () => {
   }
 });
 
+describe('furthest stage reached', () => {
+  const reachedOf = async (id) => {
+    const body = await json(await call('GET', `/api/jobs/${id}`));
+    return (body.job || body).reachedStage;
+  };
+
+  it('starts at the status the job was added with', async () => {
+    assert.equal(await reachedOf((await create()).id), 'Applied');
+    assert.equal(await reachedOf((await create({ status: 'Offer' })).id), 'Offer');
+    assert.equal(await reachedOf((await create({ status: 'Rejected' })).id), 'Applied');
+  });
+
+  it('moves forward as the status does', async () => {
+    const job = await create();
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'Recruiter Screen' });
+    assert.equal(await reachedOf(job.id), 'Recruiter Screen');
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'HM Round' });
+    assert.equal(await reachedOf(job.id), 'HM Round');
+  });
+
+  it('is kept when the job is rejected, and when the status goes back', async () => {
+    const job = await create();
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'Technical Round' });
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'Rejected' });
+    assert.equal(await reachedOf(job.id), 'Technical Round');
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'Applied' });
+    assert.equal(await reachedOf(job.id), 'Technical Round');
+  });
+
+  it('is not changed by edits that leave the status alone', async () => {
+    const job = await create();
+    await call('PUT', `/api/jobs/${job.id}`, { status: 'Offer' });
+    await call('PUT', `/api/jobs/${job.id}`, { company: 'Renamed Co', source: 'Referral' });
+    assert.equal(await reachedOf(job.id), 'Offer');
+  });
+
+  it('cannot be set directly through the API', async () => {
+    const job = await create();
+    const r = await call('PUT', `/api/jobs/${job.id}`, { reachedStage: 'Offer' });
+    assert.equal(r.status, 400);
+    assert.equal(await reachedOf(job.id), 'Applied');
+  });
+});
+
 describe('emails linked to jobs', () => {
   it('skips an email while its job exists and releases it when the job is deleted', async () => {
     const job = await create({ emailId: 'linked-msg-1' });

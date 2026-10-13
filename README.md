@@ -35,6 +35,7 @@ Then open **http://localhost:3000**. The demo has sample jobs and a **simulated*
 - **Statuses that match a real job search:** Applied, Recruiter Screen, Technical Round, HM Round, Interview Scheduled, Offer, Rejected, Declined by You, Ghosted.
 - **Filter** by status or source, **delete** one job or many at once, and **export to CSV** whenever you like.
 - **Optional Gmail scan** that finds job emails and suggests changes. You review every suggestion. Nothing is added automatically.
+- **Insights tab**: a funnel from applied to offer, outcomes, applications per week and which sources work best. It is calculated on your computer from your own jobs. Try it in the demo.
 - **No duplicates:** if an email is about a job you already track, the app offers to move that job forward (for example Applied to Rejected) instead of adding a second row.
 - **Private by design:** no accounts, no analytics, no server run by anyone but you.
 

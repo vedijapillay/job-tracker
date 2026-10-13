@@ -34,3 +34,36 @@ tr:hover {
 input, select {
   @apply border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
 }
+
+/* Insights charts. The palette passed the data-viz validator (colorblind separation, contrast
+   and lightness checks) for a light surface; the app has no dark theme, so there is no dark set. */
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text: #0b0b0b;
+  --viz-text-2: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+
+  /* Categorical series, always assigned in this order */
+  --viz-s1: #2a78d6;   /* In progress, and any single series */
+  --viz-s2: #eb6834;   /* Rejected */
+  --viz-s3: #1baf7a;   /* Offer */
+  --viz-s4: #eda100;   /* No reply */
+  --viz-s5: #e87ba4;   /* Declined by you */
+
+  /* Ordered funnel stages: one hue, light to dark */
+  --viz-stage-1: #86b6ef;
+  --viz-stage-2: #5598e7;
+  --viz-stage-3: #2a78d6;
+  --viz-stage-4: #1c5cab;
+}
+
+/* The app's global table styles are heavy for a chart's data table; keep these quiet */
+.viz-table th,
+.viz-table td {
+  @apply border-0 border-b px-2 py-2 text-sm;
+  border-color: var(--viz-grid);
+}
+.viz-table th { @apply bg-transparent font-semibold; color: var(--viz-text-2); }
+.viz-table tr:hover { background: transparent; }

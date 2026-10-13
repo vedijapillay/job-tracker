@@ -15,6 +15,8 @@ const isoDay = (days) => daysAgo(days).toISOString().split('T')[0];
 // Fabrikam and Northwind are also in the simulated mailbox, so the scan shows an existing
 // job being moved forward instead of a duplicate being added.
 function sampleJobs() {
+  // `reached` is the furthest stage a job got to, which is how a rejected job can still show up
+  // as having reached the interview stage in the Insights funnel
   return [
     { company: 'Fabrikam Systems', jobTitle: 'Group Product Manager', status: 'Applied', source: 'LinkedIn', applied: 12 },
     { company: 'Northwind Labs', jobTitle: 'Director of Product', status: 'HM Round', source: 'Referral', applied: 30 },
@@ -22,10 +24,20 @@ function sampleJobs() {
     { company: 'Adventure Works', jobTitle: 'Senior Program Manager', status: 'Recruiter Screen', source: 'Builtin', applied: 9 },
     { company: 'Tailspin Aerospace', jobTitle: 'Technical Program Manager', status: 'Applied', source: 'LinkedIn', applied: 5 },
     { company: 'Margie\'s Travel', jobTitle: 'Senior Product Manager', status: 'Interview Scheduled', source: 'LinkedIn', applied: 16 },
-    { company: 'Litware Inc', jobTitle: 'Product Manager, Growth', status: 'Rejected', source: 'Company site', applied: 41 },
+    { company: 'Litware Inc', jobTitle: 'Product Manager, Growth', status: 'Rejected', reached: 'Technical Round', source: 'Company site', applied: 41 },
     { company: 'Proseware', jobTitle: 'Product Analyst', status: 'Ghosted', source: 'Builtin', applied: 55 },
-    { company: 'Lucerne Publishing', jobTitle: 'Product Manager', status: 'Declined by You', source: 'Referral', applied: 38 },
-    { company: 'Humongous Insurance', jobTitle: 'Data Product Manager', status: 'Applied', source: 'Gmail', applied: 2 }
+    { company: 'Lucerne Publishing', jobTitle: 'Product Manager', status: 'Declined by You', reached: 'Recruiter Screen', source: 'Referral', applied: 38 },
+    { company: 'Humongous Insurance', jobTitle: 'Data Product Manager', status: 'Offer', source: 'Gmail', applied: 34 },
+    { company: 'Alpine Ski House', jobTitle: 'Product Manager', status: 'Rejected', source: 'LinkedIn', applied: 30 },
+    { company: 'Coho Winery', jobTitle: 'Product Marketing Manager', status: 'Rejected', reached: 'Recruiter Screen', source: 'Referral', applied: 44 },
+    { company: 'Blue Yonder Airlines', jobTitle: 'Product Manager, Platform', status: 'Applied', source: 'LinkedIn', applied: 26 },
+    { company: 'Trey Research', jobTitle: 'Research Product Lead', status: 'Ghosted', source: 'Builtin', applied: 62 },
+    { company: 'VanArsdel Ltd', jobTitle: 'Senior Product Manager', status: 'Rejected', reached: 'Technical Round', source: 'LinkedIn', applied: 36 },
+    { company: 'Woodgrove Bank', jobTitle: 'Product Manager, Payments', status: 'Recruiter Screen', source: 'Referral', applied: 7 },
+    { company: 'Southridge Video', jobTitle: 'Product Manager', status: 'Rejected', source: 'LinkedIn', applied: 48 },
+    { company: 'Lamna Healthcare', jobTitle: 'Senior Product Manager', status: 'Applied', source: 'Company site', applied: 4 },
+    { company: 'Fourth Coffee', jobTitle: 'Product Manager', status: 'Rejected', source: 'Builtin', applied: 27 },
+    { company: 'Munson\'s Pickles', jobTitle: 'Growth Product Manager', status: 'Ghosted', source: 'LinkedIn', applied: 70 }
   ];
 }
 
@@ -133,13 +145,16 @@ const get = (sql) => new Promise((resolve, reject) => {
 // Reset the demo database to a known state. A database holding jobs that is not marked
 // as a demo database is never touched: this function must not be able to erase real data.
 async function seedDemoData() {
-  await run('CREATE TABLE IF NOT EXISTS demo_marker (id INTEGER PRIMARY KEY CHECK (id = 1), createdAt DATETIME DEFAULT CURRENT_TIMESTAMP)');
-  const marker = await get('SELECT id FROM demo_marker WHERE id = 1');
+  // Look without creating anything: a database this refuses to touch must be left exactly as it was
+  const hasMarkerTable = Boolean(await get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'demo_marker'"));
+  const marker = hasMarkerTable ? await get('SELECT id FROM demo_marker WHERE id = 1') : undefined;
   const { count } = await get('SELECT count(*) AS count FROM jobs');
 
   if (!marker && count > 0) {
     throw new Error(`Refusing to reset ${db.DB_PATH}: it contains ${count} job(s) and is not a demo database.`);
   }
+
+  await run('CREATE TABLE IF NOT EXISTS demo_marker (id INTEGER PRIMARY KEY CHECK (id = 1), createdAt DATETIME DEFAULT CURRENT_TIMESTAMP)');
 
   for (const table of ['jobs', 'processed_emails', 'scanned_emails', 'gmail_auth', 'settings']) {
     await run(`DELETE FROM ${table}`);
@@ -153,7 +168,8 @@ async function seedDemoData() {
       jobTitle: job.jobTitle,
       appliedDate: isoDay(job.applied),
       status: job.status,
-      source: job.source
+      source: job.source,
+      reachedStage: job.reached   // when not given, the furthest stage is worked out from the status
     });
   }
   return sampleJobs().length;

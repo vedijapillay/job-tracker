@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 const { DEMO_MODE, demoDbPath } = require('./lib/demoConfig');
+const { reachedAfter, initialReached } = require('./lib/stages');
 
 // Database path
 const REAL_DB_PATH = path.join(__dirname, '../jobs.db');
@@ -71,6 +72,23 @@ async function initializeSchema() {
   if (!columns.some(col => col.name === 'emailId')) {
     await run('ALTER TABLE jobs ADD COLUMN emailId TEXT');
   }
+
+  // The furthest stage each job has reached, for the Insights funnel. Jobs from before this
+  // existed start from what their current status implies.
+  if (!columns.some(col => col.name === 'reachedStage')) {
+    await run('ALTER TABLE jobs ADD COLUMN reachedStage TEXT');
+  }
+  await run(`
+    UPDATE jobs SET reachedStage = CASE status
+      WHEN 'Offer' THEN 'Offer'
+      WHEN 'HM Round' THEN 'HM Round'
+      WHEN 'Technical Round' THEN 'Technical Round'
+      WHEN 'Interview Scheduled' THEN 'Interview Scheduled'
+      WHEN 'Recruiter Screen' THEN 'Recruiter Screen'
+      ELSE 'Applied'
+    END
+    WHERE reachedStage IS NULL
+  `);
 
   // Gmail messages the user has dismissed, so scans skip them
   await run(`
@@ -220,17 +238,20 @@ function getProcessedEmailIds() {
 function insertJob(job) {
   return new Promise((resolve, reject) => {
     const { company, jobTitle, appliedDate, status = 'Applied', source, lastEmailDate, lastEmailSubject, notes, emailId = null } = job;
+    // A job added with a later status (say Offer) has by definition reached it; callers that
+    // know better, such as the demo data, can pass the furthest stage explicitly
+    const reachedStage = job.reachedStage || initialReached(status);
     
     const query = `
-      INSERT INTO jobs (company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO jobs (company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId, reachedStage)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    db.run(query, [company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId], function(err) {
+    db.run(query, [company, jobTitle, appliedDate, status, source, lastEmailDate, lastEmailSubject, notes, emailId, reachedStage], function(err) {
       if (err) {
         reject(err);
       } else {
-        resolve({ id: this.lastID, ...job });
+        resolve({ id: this.lastID, ...job, reachedStage });
       }
     });
   });
@@ -304,35 +325,47 @@ function getJobById(id) {
 
 // Update job
 function updateJob(id, updates) {
-  return new Promise((resolve, reject) => {
-    const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes', 'emailId'];
-    const updateFields = [];
-    const values = [];
+  const allowedFields = ['company', 'jobTitle', 'status', 'source', 'lastEmailDate', 'lastEmailSubject', 'notes', 'emailId'];
+  const updateFields = [];
+  const values = [];
 
-    // Build dynamic update query
-    for (const field of allowedFields) {
-      if (field in updates) {
-        updateFields.push(`${field} = ?`);
-        values.push(updates[field]);
-      }
+  // Build dynamic update query
+  for (const field of allowedFields) {
+    if (field in updates) {
+      updateFields.push(`${field} = ?`);
+      values.push(updates[field]);
     }
+  }
 
-    if (updateFields.length === 0) {
-      reject(new Error('No valid fields to update'));
-      return;
+  if (updateFields.length === 0) {
+    return Promise.reject(new Error('No valid fields to update'));
+  }
+
+  // Changing the status can only move the furthest-reached stage forward
+  const current = 'status' in updates
+    ? new Promise((resolve, reject) => {
+        db.get('SELECT reachedStage FROM jobs WHERE id = ?', [id], (err, row) => (err ? reject(err) : resolve(row)));
+      })
+    : Promise.resolve(null);
+
+  return current.then(row => {
+    if ('status' in updates) {
+      updateFields.push('reachedStage = ?');
+      values.push(reachedAfter(row && row.reachedStage, updates.status));
     }
-
     updateFields.push('updatedAt = CURRENT_TIMESTAMP');
     values.push(id);
 
     const query = `UPDATE jobs SET ${updateFields.join(', ')} WHERE id = ?`;
 
-    db.run(query, values, function(err) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({ id, ...updates });
-      }
+    return new Promise((resolve, reject) => {
+      db.run(query, values, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id, ...updates });
+        }
+      });
     });
   });
 }

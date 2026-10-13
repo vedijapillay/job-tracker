@@ -25,7 +25,8 @@ function inspectDatabase(dbPath) {
       const columns = (await all('PRAGMA table_info(jobs)')).map(c => c.name);
       const jobs = await all('SELECT company, status FROM jobs ORDER BY id');
       const processed = await all('SELECT messageId, reason FROM processed_emails ORDER BY messageId');
-      console.log('RESULT ' + JSON.stringify({ tables, columns, jobs, processed }));
+      const reached = await all('SELECT company, reachedStage FROM jobs ORDER BY id');
+      console.log('RESULT ' + JSON.stringify({ tables, columns, jobs, processed, reached }));
       process.exit(0);
     }, (e) => { console.log('FAILED ' + e.message); process.exit(2); });
   `;
@@ -63,7 +64,68 @@ function createOldDatabase(dbPath) {
   });
 }
 
+// An older database with one job for every status, to check what the upgrade makes of each
+function createOldDatabaseWithEveryStatus(dbPath, statuses) {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath);
+    db.serialize(() => {
+      db.run(`CREATE TABLE jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, jobTitle TEXT NOT NULL,
+        appliedDate DATE NOT NULL, status TEXT DEFAULT 'Applied', source TEXT, lastEmailDate DATE,
+        lastEmailSubject TEXT, notes TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+      for (const status of statuses) {
+        db.run('INSERT INTO jobs (company, jobTitle, appliedDate, status) VALUES (?, ?, ?, ?)', [status, 'PM', '2026-09-01', status]);
+      }
+      db.close(err => (err ? reject(err) : resolve()));
+    });
+  });
+}
+
 const EXPECTED_TABLES = ['jobs', 'processed_emails', 'gmail_auth', 'settings', 'scanned_emails'];
+
+describe('furthest stage reached (for the Insights funnel)', () => {
+  const { initialReached } = require('../server/lib/stages');
+  const STATUSES = ['Applied', 'Recruiter Screen', 'Interview Scheduled', 'Technical Round', 'HM Round', 'Offer', 'Rejected', 'Declined by You', 'Ghosted'];
+
+  it('adds the column and starts every old job from what its status implies', async () => {
+    const dbPath = path.join(tempDir, 'old-stages.db');
+    await createOldDatabaseWithEveryStatus(dbPath, STATUSES);
+
+    const result = await inspectDatabase(dbPath);
+    assert.ok(result.columns.includes('reachedStage'));
+    for (const { company, reachedStage } of result.reached) {
+      assert.equal(reachedStage, initialReached(company), `${company} should start at ${initialReached(company)}`);
+    }
+    // The SQL in db.js and the JavaScript rules must agree for every status
+    assert.equal(result.reached.length, STATUSES.length);
+  });
+
+  it('gives a closed job the stage "Applied", the most that can be known without history', async () => {
+    const dbPath = path.join(tempDir, 'old-stages-closed.db');
+    await createOldDatabaseWithEveryStatus(dbPath, ['Rejected', 'Ghosted', 'Declined by You']);
+    const result = await inspectDatabase(dbPath);
+    assert.deepEqual(result.reached.map(r => r.reachedStage), ['Applied', 'Applied', 'Applied']);
+  });
+
+  it('does not overwrite stages that were recorded, when the database is opened again', async () => {
+    const dbPath = path.join(tempDir, 'reopen-stages.db');
+    await createOldDatabaseWithEveryStatus(dbPath, ['Rejected']);
+    await inspectDatabase(dbPath);
+
+    // Pretend the job went further before being rejected, then start the app again
+    await new Promise((resolve, reject) => {
+      const db = new sqlite3.Database(dbPath);
+      db.run("UPDATE jobs SET reachedStage = 'HM Round'", err => (err ? reject(err) : db.close(resolve)));
+    });
+    const result = await inspectDatabase(dbPath);
+    assert.equal(result.reached[0].reachedStage, 'HM Round');
+  });
+
+  it('a brand-new database has the column', async () => {
+    const result = await inspectDatabase(path.join(tempDir, 'fresh-stages.db'));
+    assert.ok(result.columns.includes('reachedStage'));
+  });
+});
 
 describe('database setup', () => {
   it('creates every table on a brand-new database, before `ready` resolves', async () => {
