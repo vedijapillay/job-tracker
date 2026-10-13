@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reviewer guide: how to test Job Tracker</title>
+  <meta name="description" content="Step-by-step instructions for reviewers: how to run Job Tracker on your own computer, connect a Google account, and see the Gmail scan work.">
+  <link rel="canonical" href="https://jobtracker.vedijapillay.dev/reviewers.html">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236d28d9'/%3E%3Cpath d='M18 33l9 9 19-21' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="./">Job <span>Tracker</span></a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="./#features">Features</a>
+        <a href="./#get-started">Get started</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="https://github.com/vedijapillay/job-tracker">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <article class="doc">
+      <h1>Reviewer guide: how to test Job Tracker</h1>
+      <p class="meta">For Google&rsquo;s OAuth verification team &middot; Project <code>job-tracker-510316</code></p>
+
+      <p>
+        Job Tracker is a free, open-source job application tracker that runs on the user&rsquo;s own computer. It has
+        <strong>one</strong> Google feature: an optional, read-only Gmail scan that finds job-application emails and
+        suggests tracker entries that the user reviews. Because the app runs locally, there is no hosted version to open
+        in a browser. This page explains how to run it and see that feature work. It takes about 10 minutes.
+      </p>
+
+      <h2>The permission requested</h2>
+      <ul>
+        <li><code>https://www.googleapis.com/auth/gmail.readonly</code> (&ldquo;View your email messages and settings&rdquo;). No other scope is requested.</li>
+        <li><strong>Why this scope:</strong> the app finds job emails with Gmail&rsquo;s search query (<code>users.messages.list</code> with <code>q</code>), which Google documents as unavailable with <code>gmail.metadata</code>, and it needs the message text, which <code>gmail.metadata</code> excludes, to tell confirmations, interviews, offers and rejections apart and to read the company and job title.</li>
+        <li><strong>Read-only:</strong> the app never sends, changes or deletes email, so there is no write or delete behaviour to demonstrate.</li>
+      </ul>
+
+      <h2>Steps</h2>
+      <ol>
+        <li>Install <a href="https://nodejs.org">Node.js</a> version 20.17 or newer.</li>
+        <li>
+          In a terminal, run:
+<pre><code>git clone https://github.com/vedijapillay/job-tracker.git
+cd job-tracker
+npm run setup
+npm start</code></pre>
+        </li>
+        <li>Open <code>http://localhost:3000</code> in a browser. The tracker is empty.</li>
+        <li>Click <strong>Scan Gmail</strong>. The first time, this opens the <strong>Connect Gmail</strong> guide. (A <strong>Gmail setup</strong> link beside the button reopens it.)</li>
+        <li>
+          Enter the <strong>Client ID</strong> and <strong>Client secret</strong> of the Web application OAuth client in Google
+          Cloud project <code>job-tracker-510316</code>, then click <strong>Save and test</strong>. It should report that Google
+          accepted the credentials. The redirect address <code>http://localhost:3000/api/gmail/auth/callback</code> is registered
+          on that client. The developer will provide the secret through the verification channel.
+        </li>
+        <li>Click <strong>Scan Gmail</strong> again. You are sent to Google to sign in with <strong>any Google account</strong>, then to the consent screen showing the single permission above. Click <strong>Allow</strong>. (If an &ldquo;unverified app&rdquo; screen appears first, choose <em>Advanced</em>, then continue.)</li>
+        <li>You return to the app and the scan runs. A window lists the job emails it found: the company, job title, the status it detected, and the email&rsquo;s subject, date and sender. Nothing is saved until you choose to.</li>
+        <li>Click <strong>Add to Tracker</strong> (or <strong>Update status</strong> for a job already tracked) on a result. It appears in the dashboard behind the window. <strong>Not a job email</strong> dismisses a result for good.</li>
+        <li>To end the test, click <strong>Disconnect Gmail</strong>, which deletes the saved sign-in from the computer. You can also remove access at <a href="https://myaccount.google.com/permissions">Google Account permissions</a>.</li>
+      </ol>
+      <p>No account with the developer, payment or phone verification is needed at any point.</p>
+
+      <h2>If the test inbox has no job emails</h2>
+      <p>
+        The scan only shows emails that look job-related, so an ordinary inbox may return nothing. Send these emails to the
+        Google account you are testing with, from any other address, and run the scan again. All names are fictional. Each row
+        shows what the scan should detect.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Subject</th>
+              <th scope="col">Body</th>
+              <th scope="col">Expected result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-status="Applied" data-company="Acme Robotics" data-title="Senior Product Manager">
+              <td>Thanks for applying: your application to Acme Robotics</td>
+              <td>Hi Sam, Thank you for applying. We received your application for the Senior Product Manager position. Our team will review it and be in touch.</td>
+              <td>Applied, Acme Robotics, Senior Product Manager</td>
+            </tr>
+            <tr data-status="Interview Scheduled" data-company="Contoso Health" data-title="Product Manager">
+              <td>Interview invitation: your application to Contoso Health</td>
+              <td>Hi Sam, Thank you for your application for the Product Manager role at Contoso Health. We would like to invite you to a video interview. Please select a time that works for you.</td>
+              <td>Interview Scheduled, Contoso Health, Product Manager</td>
+            </tr>
+            <tr data-status="Offer" data-company="Northwind Labs" data-title="Director of Product">
+              <td>Offer of employment: your application to Northwind Labs</td>
+              <td>Hi Sam, Congratulations! Thank you for your application for the Director of Product position. We are pleased to offer you the role. Your offer letter is attached.</td>
+              <td>Offer, Northwind Labs, Director of Product</td>
+            </tr>
+            <tr data-status="Rejected" data-company="Fabrikam Systems" data-title="Group Product Manager">
+              <td>Update on your application to Fabrikam Systems</td>
+              <td>Hi Sam, Thank you for your interest in the Group Product Manager position. After careful consideration, we have decided to move forward with other candidates at this time. We wish you the best in your job search.</td>
+              <td>Rejected, Fabrikam Systems, Group Product Manager</td>
+            </tr>
+            <tr data-status="none">
+              <td>Lunch on Friday?</td>
+              <td>Hey Sam, are you free for lunch on Friday? Let me know!</td>
+              <td>Ignored (not about a job)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Trying the interface without Google</h2>
+      <p>
+        <code>npm run demo</code> starts the same app with sample jobs and a <strong>simulated</strong> mailbox. It never contacts
+        Google, so it does not exercise the permission, but it is a quick way to see the screens.
+      </p>
+
+      <h2>What happens to the data</h2>
+      <ul>
+        <li>Email content is processed on the computer running the app and is not stored. The developer never receives it, and the app has no server.</li>
+        <li>Only the jobs the user chooses to add, email message IDs, and the Google sign-in token are saved, in a local database file on the same computer.</li>
+        <li>There is no analytics, no advertising, and no AI or machine learning.</li>
+        <li>The full details, including retention and deletion, are in the <a href="privacy.html">Privacy Policy</a>, which includes the Limited Use statement.</li>
+      </ul>
+
+      <h2>Source code</h2>
+      <p>
+        The code is public at <a href="https://github.com/vedijapillay/job-tracker">github.com/vedijapillay/job-tracker</a>.
+        The Gmail calls are in <code>server/routes/gmail.js</code>, and the only scope requested is set there.
+      </p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="./">Home</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="reviewers.html" aria-current="page">For reviewers</a>
+        <a href="https://github.com/vedijapillay/job-tracker">Source code</a>
+        <a href="https://github.com/vedijapillay/job-tracker/blob/main/LICENSE">MIT License</a>
+      </nav>
+      <p>
+        Job Tracker is an independent project and is not affiliated with or endorsed by Google or LinkedIn.
+        Gmail is a trademark of Google LLC. This site uses no cookies and no analytics.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

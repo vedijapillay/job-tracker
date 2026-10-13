@@ -27,7 +27,7 @@
   <main id="main" class="wrap">
     <article class="doc">
       <h1>Privacy Policy</h1>
-      <p class="meta">Job Tracker &middot; Last updated October 7, 2026</p>
+      <p class="meta">Job Tracker &middot; Last updated October 13, 2026</p>
 
       <p>
         Job Tracker is a free, open-source application by Vedija Pillay that runs on your own computer to track job
@@ -42,6 +42,45 @@
         <li>Your data is <strong>not sold, shared, used for advertising, or used to train AI models</strong>.</li>
         <li>You can disconnect Gmail and delete everything at any time.</li>
       </ul>
+
+      <h2>Google user data at a glance</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Topic</th><th scope="col">What Job Tracker does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Raw data accessed</th>
+              <td>With your permission (<code>gmail.readonly</code>, read-only): the sender, subject, date and about the first 1,000 characters of the text of recent inbox emails (up to 180 days, a limited number per scan) that mention job-related words, plus a Google sign-in token.</td>
+            </tr>
+            <tr>
+              <th scope="row">Aggregated or anonymized data</th>
+              <td>None. Job Tracker does not collect, derive or keep aggregated or anonymized data from your Google data. It has no analytics or telemetry.</td>
+            </tr>
+            <tr>
+              <th scope="row">How it is used</th>
+              <td>Only to provide the scan you ask for: finding job-application emails and suggesting tracker entries that you review before anything is saved. Not for advertising, profiling, lending, or any other purpose.</td>
+            </tr>
+            <tr>
+              <th scope="row">Shared or transferred</th>
+              <td>Never. Raw, aggregated and anonymized data are not sold, shared or transferred to anyone, including the developer. The data travels only between Google and your computer.</td>
+            </tr>
+            <tr>
+              <th scope="row">How it is protected</th>
+              <td>It is processed on your computer. The app only accepts connections from your own computer and rejects other websites and devices. It talks to Google only over encrypted (HTTPS) connections. The saved sign-in token is stored as plain text in a local file, so protect that file (see Security below).</td>
+            </tr>
+            <tr>
+              <th scope="row">Retention and deletion</th>
+              <td>Email text is never retained: it is read in memory during a scan and discarded. The jobs you add, email message IDs, and the sign-in token stay on your computer until you delete them, click Disconnect Gmail, or delete the database file (see Keeping, deleting and revoking access below).</td>
+            </tr>
+            <tr>
+              <th scope="row">AI and machine learning</th>
+              <td>None. Emails are classified by fixed rules on your computer. Your data is not used to develop, improve or train AI or machine-learning models, and is not sent to any AI service.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <h2>Who is responsible</h2>
       <p>
@@ -109,13 +148,14 @@
       <p>
         Only to provide the features you can see: finding job-related emails, suggesting tracker entries for you to
         review, and keeping your tracker up to date. Job Tracker does not use your Google data for advertising,
-        profiling, or to develop, improve or train artificial intelligence or machine learning models.
+        profiling, or to develop, improve or train artificial intelligence or machine learning models. Job Tracker does not
+        use artificial intelligence or machine learning at all: it classifies emails with fixed rules on your computer.
       </p>
 
       <h2>Sharing and third parties</h2>
       <p>
-        Job Tracker does not send your information to the developer or to any third party, and it contains no
-        analytics, tracking or advertising. The only service the app talks to is Google, to sign you in and read your
+        Job Tracker does not send your information, whether raw, aggregated or anonymized, to the developer or to any
+        third party, and it contains no analytics, tracking or advertising. The only service the app talks to is Google, to sign you in and read your
         Gmail, which is governed by <a href="https://policies.google.com/privacy">Google&rsquo;s Privacy Policy</a>.
         No person at Job Tracker can read your email, because the app runs on your computer and the developer has no
         access to it.
@@ -140,7 +180,7 @@
       <h2>Security</h2>
       <p>
         The app only accepts connections from your own computer and rejects requests from other websites and other
-        devices. Please note that the saved Google sign-in token is stored as plain text inside the database file
+        devices, and it communicates with Google only over encrypted (HTTPS) connections. Please note that the saved Google sign-in token is stored as plain text inside the database file
         on your computer, so protect that file the way you protect your other personal files (for example with a
         device password and disk encryption) and do not share it.
       </p>
@@ -168,6 +208,7 @@
       <nav class="footer-links" aria-label="Footer">
         <a href="./">Home</a>
         <a href="privacy.html">Privacy Policy</a>
+        <a href="reviewers.html">For reviewers</a>
         <a href="https://github.com/vedijapillay/job-tracker">Source code</a>
         <a href="https://github.com/vedijapillay/job-tracker/blob/main/LICENSE">MIT License</a>
       </nav>
