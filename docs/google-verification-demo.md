@@ -90,6 +90,27 @@ Aim for a calm pace. The times are targets, not limits. Say the lines in your ow
 | **2:35–2:50** | Close the window with **Close**. The tracker table now shows the job. | "Back on the dashboard, the job is now in the tracker, with its status, source and date." |
 | **2:50–3:05** | Point to **Disconnect Gmail** and click it. | "The user stays in control. **Disconnect Gmail** removes the saved sign-in from this computer. They can also remove the app's access at any time from their Google Account permissions page. **All job data and the Google sign-in stay on this computer.**" |
 
+### Round 2: what Google asked for after the first video
+
+Google's reviewers said the first video did not show why `gmail.readonly` is needed instead of a narrower scope, and asked for a fuller demonstration. Record a **new** video with the script above and add these beats. They are the answer to "why not a narrower scope".
+
+| Where | On screen | Say |
+|---|---|---|
+| **Before the consent screen** | The app, then a short title card or the app itself. | "This app is read-only. It never sends, labels, moves or deletes email, so there is no change to show in the Gmail account. I'll show that at the end." |
+| **On the consent screen** | Click **Show all services** if it appears. Hold until the permission line is fully readable. | "The only permission is **read-only access to Gmail**, shown here in full. It matches the single scope configured in the Cloud Console, which I'll show at the end." |
+| **After the results list** (the key beat) | Open sample email 4 (*Update on your application to Fabrikam Systems*) in Gmail, side by side with its result card. Point at the subject, then at the body sentence "we have decided to move forward with other candidates". | "The **subject alone says nothing** about the outcome. The rejection is only in the **body**. The app reads the body on this computer to decide the status and to find the job title. A metadata-only scope returns headers and the subject, not the body, so it could not tell this rejection from a confirmation." |
+| **Same beat** | Point at the Group Product Manager title on the card, then at the same words in the email body. | "The **job title also comes from the body**." |
+| **Search** | Optional: show the Gmail search box with a job-related search. | "The app finds job emails with Gmail's search, which the metadata-only scope does not allow. It reads only recent inbox mail that matches job-related words." |
+| **Right after the Add / Update demo** | Click **Update existing job** on a result for a job already in the tracker, then **Not a job email** on the lunch email. | "Every action is the user's choice. Nothing is added automatically." |
+| **Read-only proof** | Switch to Gmail. Show the inbox: no new labels, nothing moved, nothing sent. | "Nothing in the Gmail account changed. The app only reads." |
+| **End** | Google Cloud Console, **Google Auth Platform, Data Access**. Show that **only `gmail.readonly`** is listed. | "The scope the app asks for is exactly the scope configured here. There is only this one." |
+
+Checklist before you record:
+- The Cloud Console lists **only** `https://www.googleapis.com/auth/gmail.readonly`.
+- Publishing status stays **In production**.
+- Use your real Google project and the test inbox, not demo mode (the demo's Gmail is simulated).
+- Make sure all five sample emails below are in the test inbox's **Primary** tab.
+
 ### What to avoid saying or showing
 - Real names, real email addresses or real company emails other than the test ones.
 - The Client secret, refresh token, `.env` file or the Gmail setup screen.
@@ -139,7 +160,7 @@ Paste into the verification form and adapt it. This is a draft, not legal text.
 >
 > **Why this scope is needed:** Job Tracker is a desktop-style app that runs on the user's own computer. It reads the sender, subject and body of recent inbox messages to detect job-application emails (confirmations, interview invitations, offers and rejections) and suggests tracker entries that the user reviews and approves.
 >
-> **Why a narrower scope is not enough:** Detecting the status of an application requires the message body, which the metadata-only scope does not provide. The app never sends, modifies or deletes mail.
+> **Why a narrower scope is not enough:** The app has to read the message body. The outcome of an application is often only in the body (for example, a subject of "Update on your application" with a rejection in the text), and the job title is taken from the body too. `gmail.metadata` does not return the body, and it does not allow the search query the app uses to find job emails. The add-on scopes only work on one message that is open inside Gmail, so they cannot scan the inbox. `gmail.readonly` is the narrowest scope that allows searching and reading messages. The app never sends, modifies or deletes mail.
 >
 > **Data handling:** Email content is processed on the user's computer only and is not transmitted to any server operated by the developer or third parties. Only the job details the user chooses to add (company, title, status, dates) are saved to a local database on the same computer. The app's use of Google user data complies with the Google API Services User Data Policy, including the Limited Use requirements.
 >
